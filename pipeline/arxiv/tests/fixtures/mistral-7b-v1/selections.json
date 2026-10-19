@@ -1,0 +1,12 @@
+{
+  "provenance": "Hand-authored deterministic selections for transport and rendering regression, reviewed against the pinned original. These are test fixtures, not claims of model execution or automatic figure recognition.",
+  "pdf_coordinate_system": "One-based PDF page; top-left visible PyMuPDF page coordinates in points; all pages have bounds [0, 0, 612, 792]. Crops exclude adjacent captions.",
+  "figures": [
+    {"number": "Figure 1", "element_id": "S2.F1", "asset_index": 0, "page": 2, "bbox": [102, 226, 510, 386], "caption_phrase": "Sliding Window Attention"},
+    {"number": "Figure 2", "element_id": "S2.F2", "asset_index": 0, "page": 3, "bbox": [100, 64, 512, 140], "caption_phrase": "Rolling buffer cache"},
+    {"number": "Figure 3", "element_id": "S2.F3", "asset_index": 0, "page": 3, "bbox": [160, 261, 453, 389], "caption_phrase": "Pre-fill and chunking"},
+    {"number": "Figure 4", "element_id": "S3.F4", "asset_index": 0, "page": 4, "bbox": [102, 64, 510, 205], "caption_phrase": "Performance of Mistral"},
+    {"number": "Figure 5", "element_id": "S3.F5", "asset_index": 0, "page": 5, "bbox": [159, 64, 453, 270], "caption_phrase": "Results on MMLU"},
+    {"number": "Figure 6", "element_id": "Sx1.F6", "asset_index": 0, "page": 7, "bbox": [100, 64, 512, 689], "caption_phrase": "Human evaluation"}
+  ]
+}

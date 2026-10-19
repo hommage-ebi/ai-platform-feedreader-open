@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "interests": [
+    {
+      "id": "3",
+      "label": "Synthetic classification fixture",
+      "criteria": "Evaluate synthetic fixture evidence for pipeline boundary tests"
+    },
+    {
+      "id": "6",
+      "label": "Licensed integration fixture",
+      "criteria": "Use deterministic selections to test licensed source processing"
+    }
+  ],
+  "application_guidance": "This fixed test policy is independent of the user's editable research interests."
+}

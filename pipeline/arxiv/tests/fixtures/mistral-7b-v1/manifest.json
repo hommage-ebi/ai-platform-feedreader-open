@@ -1,0 +1,70 @@
+{
+  "id": "2310.06825",
+  "version": "v1",
+  "title": "Mistral 7B",
+  "source_url": "https://arxiv.org/abs/2310.06825v1",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "license_evidence_url": "https://arxiv.org/html/2310.06825v1",
+  "attribution": "Albert Q. Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford, Devendra Singh Chaplot, Diego de las Casas, Florian Bressand, Gianna Lengyel, Guillaume Lample, Lucile Saulnier, Lélio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril, Thomas Wang, Timothée Lacroix, William El Sayed. Mistral 7B (2023), arXiv:2310.06825v1.",
+  "changes": "Test-only text extraction, rasterization and figure cropping; originals unmodified in cache.",
+  "rights_review": "Official HTML identifies CC BY 4.0. Full captions/text reviewed: no separate reproduction permission exceptions found. Model/code Apache license is distinct. No rights claim for referenced datasets/models.",
+  "assets": [
+    {
+      "file": "source.html",
+      "url": "https://arxiv.org/html/2310.06825v1",
+      "mime": "text/html",
+      "sha256": "be98d3cf8c6dcc980414ffcc48a96bb2ed4aa411af9c0621ddba3de54d286e15",
+      "bytes": 114594
+    },
+    {
+      "file": "source.pdf",
+      "url": "https://arxiv.org/pdf/2310.06825v1",
+      "mime": "application/pdf",
+      "sha256": "dfbac4e7035344b305c947481f2e7e8a02f7a24a563917eb6e47f6591d14c5ae",
+      "bytes": 3749788
+    },
+    {
+      "file": "figure-0.png",
+      "url": "https://arxiv.org/html/2310.06825v1/swa.png",
+      "mime": "image/png",
+      "sha256": "2c0f0d17c4d9e06d3f3f6c52d3a2e64603a81dfac1399bc8d12996a2bae0c50e",
+      "bytes": 154293
+    },
+    {
+      "file": "figure-1.png",
+      "url": "https://arxiv.org/html/2310.06825v1/rolling_buffer.png",
+      "mime": "image/png",
+      "sha256": "7caf661398953644737c8975515c494e395fe58fad18940be60fc241ded56af9",
+      "bytes": 101086
+    },
+    {
+      "file": "figure-2.svg",
+      "url": "https://arxiv.org/html/2310.06825v1/chunking.svg",
+      "mime": "image/svg+xml",
+      "sha256": "b328750c43252601699dd35676582fe581986988793186e330150e4a6870b8a3",
+      "bytes": 43621
+    },
+    {
+      "file": "figure-3.png",
+      "url": "https://arxiv.org/html/2310.06825v1/images/230927_bars.png",
+      "mime": "image/png",
+      "sha256": "6725e4201510de39be1f9dde7cbbe2ecf13301934be51c711ec2bb50cc3a0c3f",
+      "bytes": 894441
+    },
+    {
+      "file": "figure-4.png",
+      "url": "https://arxiv.org/html/2310.06825v1/images/230927_effective_sizes.png",
+      "mime": "image/png",
+      "sha256": "be3622a9114feac42cc6c637b5e85db31a61c8eb32f67e14e32fb74904c9ee17",
+      "bytes": 763676
+    },
+    {
+      "file": "figure-5.png",
+      "url": "https://arxiv.org/html/2310.06825v1/images/llama_vs_mistral_example.png",
+      "mime": "image/png",
+      "sha256": "ffa68b2e1ec97971e80dda8f81037953c4abf7f98a87617d0c9a847f75e1abfa",
+      "bytes": 630438
+    }
+  ]
+}

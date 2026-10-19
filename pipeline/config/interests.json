@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "interests": [
+    {
+      "id": "multiscale-acceleration",
+      "label": "マルチスケール・加速",
+      "criteria": "原子シミュレーションからのマルチスケール接続及び、レアイベントのキネティクス計算を目指す研究"
+    },
+    {
+      "id": "lightweight-mlip",
+      "label": "軽量MLIP",
+      "criteria": "機械学習ポテンシャルの軽量化や効率的な利用・実装によって、MDの計算コストを下げる研究"
+    },
+    {
+      "id": "mlip-extension",
+      "label": "MLIP拡張",
+      "criteria": "機械学習ポテンシャルで扱える物性・現象の拡張や、学習済みモデルの新たな活用に関する研究"
+    },
+    {
+      "id": "chemical-accuracy",
+      "label": "chemical accuracy",
+      "criteria": "DFTの近似誤差を補う機械学習や、ポテンシャルの実験との整合性・自由エネルギー評価の精度を高める計算手法に関する研究"
+    },
+    {
+      "id": "synthesis-simulation",
+      "label": "合成sim",
+      "criteria": "固体の合成・成膜・エッチングなどのプロセスについて、機械学習を含む計算化学でモデリング・プロセス条件を予測する研究"
+    },
+    {
+      "id": "materials-research-automation",
+      "label": "材料研究自動化",
+      "criteria": "AIエージェントによる自律研究及び、材料科学での応用に関する研究"
+    },
+    {
+      "id": "fast-electronic-structure",
+      "label": "高速電子状態計算",
+      "criteria": "電子状態・電子輸送計算の効率化・高速化に関する研究"
+    }
+  ],
+  "application_guidance": "語の一致ではなく、研究の対象、手段、目的が上記の関心にどうつながるかで判断します。それぞれの関心の要件に照らし、研究内容との具体的な接点に基づいて判定します。"
+}

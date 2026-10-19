@@ -1,0 +1,15 @@
+[project]
+name = "ai-platform-feedreader"
+version = "0.1.0"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "beautifulsoup4==4.13.4",
+  "bleach==6.4.0",
+  "cairosvg==2.9.1",
+  "markdown==3.8.1",
+  "pillow==12.3.0",
+  "pymupdf==1.26.0",
+]
+
+[tool.uv]
+package = false

@@ -1,0 +1,36 @@
+{
+  "name": "ai-platform-feedreader",
+  "version": "1.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:python": "pipeline/.venv/bin/python -m unittest discover -s pipeline -t . -v",
+    "build": "node scripts/build.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "verify": "node scripts/verify-content.mjs",
+    "check:retention": "node scripts/check-retention.mjs",
+    "test:built": "node --test tests/built-worker.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:runtime": "node --test tests/asset-runtime.integration.mjs"
+  },
+  "dependencies": {
+    "dompurify": "3.4.17",
+    "drizzle-orm": "0.45.4",
+    "katex": "0.19.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.64.0",
+    "@cloudflare/workers-types": "5.20261018.1",
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "jsdom": "26.1.0",
+    "typescript": "5.9.2",
+    "vite": "8.3.4",
+    "wrangler": "4.151.1"
+  }
+}

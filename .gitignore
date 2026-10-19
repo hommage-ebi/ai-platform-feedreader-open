@@ -1,0 +1,55 @@
+node_modules/
+dist/
+.cache/
+.sites-runtime/
+**/.venv/
+**/__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.log
+# Runs deny by default; only compact resumability records are tracked.
+data/runs/**
+!data/runs/**/
+!data/runs/**/preflight.json
+!data/runs/**/ledger.json
+!data/runs/**/failures.jsonl
+!data/runs/**/release.json
+!data/runs/**/candidates.json
+!data/runs/**/classification.json
+!data/runs/**/classification-*.json
+!data/runs/**/source.json
+!data/runs/**/metadata.json
+!data/runs/**/result.json
+!data/runs/**/summary.md
+data/runs/**/site/**
+data/runs/**/tasks/**
+data/runs/**/*tasks.json
+!data/runs/**/selected.json
+!data/runs/**/groups.json
+!data/runs/**/groups/*.json
+!data/runs/**/task-receipts/*.json
+!data/runs/**/classifications.json
+!data/runs/**/classification-proofs.json
+!data/runs/**/model-request.json
+!data/runs/**/model-output-receipt.json
+
+.wrangler/
+data/runs/**/site/**
+data/runs/**/tasks/**
+
+# Cross-language canonical collection transaction locks
+data/articles/.collection.lock/
+data/articles/.merge.lock
+
+# Recoverable private collection transaction (may contain draft HTML)
+data/articles/.collection-transaction.json
+
+# Verified RSS coverage is durable resumability evidence
+!data/runs/*/*/run/collection-capture.json
+
+# Frozen per-run policy and per-paper policy mapping survive checkout/cache loss
+!data/runs/*/*/run/processing-policy.json
+!data/runs/*/*/run/paper-policies.json
+data/runs/.paper-policy.lock/

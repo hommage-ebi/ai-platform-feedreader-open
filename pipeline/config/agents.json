@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "classify": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "summary": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "max_parallel": 6
+}
