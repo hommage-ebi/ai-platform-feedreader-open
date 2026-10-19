@@ -166,7 +166,7 @@ function events() {
 }
 async function boot() {
   try {
-    const [data, reading, preferences, batch] = await Promise.all([json('/papers.json'), json('/api/reading-state'), json('/api/article-preferences'), json('/batch-status.json').catch(() => null)]);
+    const [data, reading, preferences, batch] = await Promise.all([json('/papers.json'), json('/api/reading-state'), json('/api/article-preferences'), json('/api/batch-status').catch(() => null)]);
     papers = Array.isArray(data) ? data : data.articles || [];
     const initial = Object.create(null); for (const p of papers) initial[p.id] = { read: reading.readIds.includes(p.id), starred: preferences.starredIds.includes(p.id), bad: preferences.badIds.includes(p.id) };
     store = createStateStore(initial, async (id, field, value) => {

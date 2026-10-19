@@ -19,7 +19,7 @@ test('Sites server entrypoint is the same protected Worker with the same asset c
 // This smoke test uses the actual produced JSON rather than substituting fixtures.
 test('built Worker serves the real built collection and registered article bodies',async()=>{
  const actualEnv={OWNER_USER_ID:'owner',TRUSTED_AUTH_HEADER:'hosting',ASSETS:{async fetch(request){const path=decodeURIComponent(new URL(request.url).pathname);try{return new Response(await readFile('dist/client'+(path==='/'?'/reader-shell.html':path)));}catch{return new Response('Not found',{status:404});}}}};
- const paths=['/','/papers.json','/images-manifest.json','/batch-status.json'];
+ const paths=['/','/papers.json','/images-manifest.json','/batch-status.json','/api/batch-status'];
  const papers=JSON.parse(await readFile('dist/client/papers.json','utf8'));
  for(const paper of papers)for(const version of paper.versionHistory?.length?paper.versionHistory:[paper])paths.push('/'+version.html_path,`/reader-articles/${encodeURIComponent(paper.id)}/${encodeURIComponent(version.version)}.json`);
  for(const path of paths)assert.equal((await worker.fetch(request(path,'owner'),actualEnv)).status,200,path);

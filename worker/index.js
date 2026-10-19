@@ -101,7 +101,7 @@ export function createWorker(content, {authenticate = sitesIdentity} = {}) {
       const knownPath = assetPaths.has(path);
       if (/%(?:2e|5c|25)|\\/i.test(path) || (!knownPath && (path.includes('..') || /%2f/i.test(path)))) return protect(json({error:'Invalid path'},400));
       let response;
-      if (path === '/batch-status.json' && ['GET','HEAD'].includes(request.method)) {
+      if (['/api/batch-status','/batch-status.json'].includes(path) && ['GET','HEAD'].includes(request.method)) {
         response = await publishedBatch(request,env);
       } else if (path === '/api/reading-state' || path === '/api/article-preferences') {
         if (!env.DB) throw new Error('Missing DB');

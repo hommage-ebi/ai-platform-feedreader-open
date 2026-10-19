@@ -1,3 +1,4 @@
+import {tmpdir} from 'node:os';
 // Builds isolated real artifacts and exercises Wrangler's local ASSETS + R2.
 // No live Site, credentials, deployment, or external paper downloads are used.
 import test from 'node:test';
@@ -10,7 +11,7 @@ import {createHash} from 'node:crypto';
 const source=resolve(fileURLToPath(new URL('..',import.meta.url)));
 function command(program,args,options){return new Promise((accept,reject)=>{const child=spawn(program,args,options);let output='';child.stdout.on('data',d=>output+=d);child.stderr.on('data',d=>output+=d);child.on('error',reject);child.on('exit',code=>code===0?accept(output):reject(Error(output)));});}
 test('actual built ASSETS preserves legacy paths; private R2 status updates frozen batch', {timeout:90000},async()=>{
- const root=await mkdtemp('/tmp/reader-asset-runtime-');let server,logs='';
+ const root=await mkdtemp(join(tmpdir(),'reader-asset-runtime-'));let server,logs='';
  try{
   await cp(source,root,{recursive:true,filter:path=>!['node_modules','dist','.sites-runtime','.wrangler','.venv','__pycache__'].includes(basename(path))});
   await symlink(join(source,'node_modules'),join(root,'node_modules'),'dir');
@@ -36,7 +37,7 @@ test('actual built ASSETS preserves legacy paths; private R2 status updates froz
    assert.equal((await fetch(base+path,{headers:{'oai-authenticated-user-id':'other'},redirect:'manual'})).status,403);
   }
   for(const path of ['/papers/hep-th%252F9901001/v1.html','/papers/unknown%2F9901001/v1.html','/papers/hep-th%2F9901001/v2.html','/reader-articles/hep-th%252F9901001/v1.json','/reader-articles/blog%2Fpost/v1.json','/reader-articles/blog%252Fpost/current.json'])assert.equal((await fetch(base+path,{headers:owner,redirect:'manual'})).status,400,path);
-  const status=async()=>{const response=await fetch(base+'/batch-status.json',{headers:owner});assert.equal(response.status,200);return response.json();};
+  const status=async()=>{const response=await fetch(base+'/api/batch-status',{headers:owner});assert.equal(response.status,200);return response.json();};
   assert.equal((await status()).publication_status,'verification_pending');
   const manifest=JSON.parse(await readFile(join(root,'dist/.openai/release-manifest.json')));
   const receipt={schema_version:1,status:'succeeded',site_id:manifest.site_id,build_id:manifest.build_id,collection_sha256:manifest.collection_sha256,deployment_id:'local-runtime',verified_url:'https://reader.example',verified_at:'2026-10-19T00:00:00Z',articles:manifest.articles,latest_batch:{...batch,published_count:1,publication_status:'succeeded',updated_at:'2026-10-19T00:00:00Z'}};
@@ -50,7 +51,7 @@ test('actual built ASSETS preserves legacy paths; private R2 status updates froz
   for(let i=0;i<2;i++){const response=await put(receipt);assert.equal(response.status,200);assert.deepEqual(await response.json(),receipt);}
   assert.equal((await status()).publication_status,'succeeded');assert.equal((await status()).published_count,1);
   assert.deepEqual(JSON.parse(await readFile(join(root,'dist/client/batch-status.json'))),batch);
-  assert.equal((await fetch(base+'/batch-status.json')).status,401);
+  assert.equal((await fetch(base+'/api/batch-status')).status,401);
  }finally{
   if(server){try{process.kill(-server.pid,'SIGTERM');}catch{}await new Promise(resolve=>server.exitCode!==null?resolve():server.once('exit',resolve));}
   await rm(root,{recursive:true,force:true});

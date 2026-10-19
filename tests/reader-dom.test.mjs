@@ -55,14 +55,14 @@ test('app switches historical bibliography and body together; swipe preview and 
 });
 test('last update uses publication status in JST and status-fetch failure does not block Reader',async()=>{
  for(const fail of [false,true]){
-  const w=windowFor(html);w.fetch=async url=>{if(url==='/batch-status.json'){if(fail)throw Error('offline');return{ok:true,json:async()=>({updated_at:'2026-10-18T12:34:00Z'})};}const data=url==='/papers.json'?[]:url==='/api/reading-state'?{readIds:[]}:{starredIds:[],badIds:[]};return{ok:true,json:async()=>data};};
+  const w=windowFor(html);w.fetch=async url=>{if(url==='/api/batch-status'){if(fail)throw Error('offline');return{ok:true,json:async()=>({updated_at:'2026-10-18T12:34:00Z'})};}const data=url==='/papers.json'?[]:url==='/api/reading-state'?{readIds:[]}:{starredIds:[],badIds:[]};return{ok:true,json:async()=>data};};
   w.eval(appCode);await tick();assert.ok(w.document.querySelector('#feeds button'));if(!fail)assert.match(w.document.querySelector('#updated').textContent,/2026\/10\/18 21:34 JST/);else assert.equal(w.document.querySelector('#updated').textContent,'最終更新 —');w.close();
  }
 });
 test('mobile touch gestures preserve native table/math scrolling and pinch; safe swipes commit only on release',async()=>{
  const w=windowFor(html), writes=[];w.innerWidth=390;
  const papers=[{id:'a',source:'Research',title:'A',date:'2026-02-01',version:'v1'},{id:'b',source:'Research',title:'B',date:'2026-01-01',version:'v1'}];
- w.fetch=async(url,options)=>{if(options?.method==='POST'){writes.push(JSON.parse(options.body));return{ok:true,json:async()=>({ok:true})};}const id=url.includes('/b/')?'b':'a';const data=url==='/papers.json'?papers:url==='/api/reading-state'?{readIds:[]}:url==='/api/article-preferences'?{starredIds:[],badIds:[]}:url==='/batch-status.json'?{}:{id,version:'v1',title:id,html:'<p class="safe">Safe body</p><table><tr><td>Wide table</td></tr></table><p>\\[x=1\\]</p>'};return{ok:true,json:async()=>data};};
+ w.fetch=async(url,options)=>{if(options?.method==='POST'){writes.push(JSON.parse(options.body));return{ok:true,json:async()=>({ok:true})};}const id=url.includes('/b/')?'b':'a';const data=url==='/papers.json'?papers:url==='/api/reading-state'?{readIds:[]}:url==='/api/article-preferences'?{starredIds:[],badIds:[]}:url==='/api/batch-status'?{}:{id,version:'v1',title:id,html:'<p class="safe">Safe body</p><table><tr><td>Wide table</td></tr></table><p>\\[x=1\\]</p>'};return{ok:true,json:async()=>data};};
  w.eval(appCode);await tick();w.document.querySelector('.paper-open').click();await tick();
  const touch=(target,type,x,y,{count=1}={})=>{const e=new w.Event(type,{bubbles:true,cancelable:true});const t={identifier:1,clientX:x,clientY:y};Object.assign(e,{touches:type==='touchend'||type==='touchcancel'?[]:count===1?[t]:[t,{identifier:2,clientX:x+10,clientY:y}],changedTouches:[t]});target.dispatchEvent(e);return e;};
  for(const target of [w.document.querySelector('td'),w.document.querySelector('.katex-display')]){

@@ -1,3 +1,4 @@
+import {tmpdir} from 'node:os';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {deploymentStatusRequest,publishedBatch} from '../worker/release-status.js';
@@ -46,7 +47,7 @@ test('status synchronizer rejects legacy nonempty evidence before any remote req
  const {writeBuildSnapshot,prepareRelease}=await import('../scripts/release-snapshot.mjs');
  const {recordDeployment}=await import('../scripts/record-deployment.mjs');
  const {syncReleaseStatus}=await import('../scripts/sync-release-status.mjs');
- const cwd=process.cwd(),root=await mkdtemp('/tmp/legacy-publication-count-');process.chdir(root);
+ const cwd=process.cwd(),root=await mkdtemp(join(tmpdir(),'legacy-publication-count-'));process.chdir(root);
  try{
   for(const [path,value] of [['dist/client/papers.json',[]],['dist/client/batch-status.json',{completed_count:1}],['dist/.openai/hosting.json',{project_id:'site'}]]){
    await mkdir(join(root,path,'..'),{recursive:true});await writeFile(join(root,path),JSON.stringify(value));
