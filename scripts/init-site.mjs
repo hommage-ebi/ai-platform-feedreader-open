@@ -10,7 +10,7 @@ export async function initSite({root=process.cwd(),projectId}) {
   if(manifest.project_id && !manifest.project_id.startsWith('CONFIGURE_') && manifest.project_id!==projectId) throw Error('Existing Site identity differs; refusing to retarget this checkout');
   manifest={...manifest,project_id:projectId,d1:'DB',r2:'IMAGES'};
   await mkdir(resolve(root,'.openai'),{recursive:true});await writeFile(file,JSON.stringify(manifest,null,2)+'\n');
-  return {project_id:projectId,manifest:'.openai/hosting.json',runtime_variables:{TRUSTED_AUTH_HEADER:'hosting',SITES_OWNER_PRIVATE:'confirmed',OWNER_SETUP_ENABLED:'true',SITES_STORAGE_ENABLED:'false'},next:'Confirm owner-private Sites ingress before applying runtime variables. Then sign in and read /api/setup/identity; explicitly set OWNER_USER_ID and disable OWNER_SETUP_ENABLED.'};
+  return {project_id:projectId,manifest:'.openai/hosting.json',runtime_variables:{TRUSTED_AUTH_HEADER:'hosting',SITES_OWNER_PRIVATE:'confirmed',SITES_STORAGE_ENABLED:'false'},next:'Confirm owner-private Sites ingress before applying runtime variables. Authenticated visitors open Reader directly; Sites provides the user identity without application registration.'};
 }
 if(import.meta.url===pathToFileURL(process.argv[1]||'').href){
   if(process.argv.length!==4||process.argv[2]!=='--project-id')throw Error('Usage: node scripts/init-site.mjs --project-id <returned-id>');

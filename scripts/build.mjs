@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile, rename, access } from 'node:fs/promises';
+import { mkdir, rm, writeFile, rename, access, cp } from 'node:fs/promises';
 import { createBuilder } from 'vite';
 import { sitesEnvironment } from './sites-env.mjs';
 import { stagePublic } from './stage-public.mjs';
@@ -18,7 +18,12 @@ try {
   await buildReaderArticles();
   const builder = await createBuilder();
   await builder.buildApp();
-  await rename('dist/client/reader/index.html','dist/client/index.html');
+  // Native Sites packaging loads dist/server/index.js and its Wrangler config.
+  // Retain dist/worker for existing integration tools and publish the same build.
+  await cp('dist/worker','dist/server',{recursive:true});
+  // Keep the origin root dynamic so Sites' static-first asset lookup cannot
+  // bypass the initial owner setup screen.
+  await rename('dist/client/reader/index.html','dist/client/reader-shell.html');
   await rm('dist/client/reader',{recursive:true,force:true});
   await verifyContent();
   await writeBuildSnapshot();

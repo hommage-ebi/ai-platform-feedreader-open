@@ -19,7 +19,7 @@ export async function verifyContent({articles='data/articles',out='dist/client'}
   const expectedBody=expectedReaderBody(source,article,version);
   if(!isDeepStrictEqual(body,expectedBody))throw new Error(`Reader body mismatch: ${article.id}@${version.version}`);
  }
- const allowed=new Set(['release-identity.json',frontendLicenseFile,'.assetsignore','index.html','assets','standalone.js','papers','papers.json','images-manifest.json','batch-status.json','reader-articles']);
+ const allowed=new Set(['release-identity.json',frontendLicenseFile,'.assetsignore','reader-shell.html','assets','standalone.js','papers','papers.json','images-manifest.json','batch-status.json','reader-articles']);
  for(const name of await readdir(out))if(!allowed.has(name))throw new Error(`Unexpected public artifact: ${name}`);
  return {articles:papers.length,verified:true};
 }

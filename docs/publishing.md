@@ -92,8 +92,8 @@ Sitesの利用条件・作成・配備・共有設定は、OpenAIの[利用ガ�
    ```
 
    このコマンドは `.openai/hosting.json` のIDと `DB`／`IMAGES` bindingを設定する。実記事・run記録・秘密情報・別利用者のIDは公開ソースへ含めない。
-2. 本人限定（owner-private）でSites専用の入口を使い、実行環境を `TRUSTED_AUTH_HEADER=hosting`、`SITES_OWNER_PRIVATE=confirmed`、`OWNER_SETUP_ENABLED=true`、`SITES_STORAGE_ENABLED=false` にする。これらはホスト側のアクセス設定を確認した後に指定する値であり、コードが公開範囲を自動証明するものではない。外部からの同名ヘッダーを除去するSitesの認証入口以外では有効にしない
-3. 本人がそのSiteへサインインし、`/api/setup/identity` の `user_id` を `OWNER_USER_ID` へ設定する。このIDはSite固有なので、別Siteやアカウント管理APIのIDを使わない。設定後は `OWNER_SETUP_ENABLED=false` にする。本人IDが未設定の間は通常のReaderを503で閉じ、最初のアクセスを自動登録しない
+2. 本人限定（owner-private）でSites専用の入口を使い、実行環境を `TRUSTED_AUTH_HEADER=hosting`、`SITES_OWNER_PRIVATE=confirmed`、`SITES_STORAGE_ENABLED=false` にする。これらはホスト側のアクセス設定を確認した後に指定する値であり、コードが公開範囲を自動証明するものではない。外部からの同名ヘッダーを除去するSitesの認証入口以外では有効にしない
+3. 本人がSiteへサインインすると、そのままReaderを開く。Sitesが本人限定アクセスを制御し、認証済みのSite固有IDを渡す。アプリはこのIDを既読・お気に入りの保存キーとして直接使用する。アプリ側の初回登録・確認ボタン・本人IDのDB登録は不要。過去の `site_owner_setup` は履歴として残すが参照しない。`OWNER_USER_ID` を明示設定した場合はそのIDとの照合を優先する。別Siteやアカウント管理APIのIDを設定しない。公開範囲を変える場合は本人IDの明示設定と認可設計を見直し、`SITES_OWNER_PRIVATE` と保存用入口を無効化してから変更する。
 4. 下記の画像転送を使う場合は `SITES_STORAGE_ENABLED=true` にし、Pythonプロセスへ接続先とサービス用トークンを渡す
 
 ### PythonからSites管理R2へ保存する

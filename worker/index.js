@@ -3,7 +3,7 @@ import {validateImageManifest} from './image-contract.js';
 export {validateImageManifest} from './image-contract.js';
 import {deploymentStatusRequest, publishedBatch} from './release-status.js';
 import { sitesIdentity, ownerAuthorization } from './auth.js';
-import { privateSitesBoundary, storageRequest } from './storage.js';
+import { storageRequest } from './storage.js';
 
 const MAX_BODY = 4096;
 const json = (value, status = 200) => new Response(JSON.stringify(value), {status, headers:{'Content-Type':'application/json; charset=utf-8'}});
@@ -73,15 +73,13 @@ export function createWorker(content, {authenticate = sitesIdentity} = {}) {
   return {async fetch(request,env) {
     try {
       const pathBeforeAuth = new URL(request.url).pathname;
-      if (pathBeforeAuth === '/api/deployment-status') return protect(await deploymentStatusRequest(request,env));
-      if (pathBeforeAuth === '/api/storage') return protect(await storageRequest(request,env));
-      if (pathBeforeAuth === '/api/setup/identity') {
-        if (!privateSitesBoundary(env) || env.OWNER_USER_ID || env.OWNER_SETUP_ENABLED !== 'true') return protect(json({error:'Setup unavailable'},503));
-        if (request.method !== 'GET') return protect(json({error:'Method not allowed'},405));
-        const verified = await authenticate(request,env);
-        return protect(verified.error ? json({error:verified.error},verified.status) : json({user_id:verified.userId}));
-      }
+      if (pathBeforeAuth.startsWith('/api/setup/')) return protect(json({error:'Not found'},404));
       const identity = ownerAuthorization(await authenticate(request, env), env);
+      const visitorEnv = identity.userId ? {...env, OWNER_USER_ID:identity.userId} : env;
+      if (pathBeforeAuth === '/api/deployment-status' || pathBeforeAuth === '/api/storage') {
+        if (request.headers.get('oai-authenticated-user-id') && identity.error) return protect(json({error:identity.error},identity.status));
+        return protect(await (pathBeforeAuth === '/api/storage' ? storageRequest(request,visitorEnv) : deploymentStatusRequest(request,visitorEnv)));
+      }
       if (identity.error) return protect(json({error:identity.error},identity.status));
       const user = identity.userId;
       const url = new URL(request.url), path = url.pathname;
@@ -145,7 +143,11 @@ export function createWorker(content, {authenticate = sitesIdentity} = {}) {
         // External double encoding is still rejected above; only exact known
         // article paths are mapped, after owner and traversal validation.
         let assetRequest = request;
-        if (assetPaths.has(path) && assetPaths.get(path) !== path) {
+        if (path === '/') {
+          const assetURL = new URL(request.url);
+          assetURL.pathname = '/reader-shell.html';
+          assetRequest = new Request(assetURL,request);
+        } else if (assetPaths.has(path) && assetPaths.get(path) !== path) {
           const assetURL = new URL(request.url);
           assetURL.pathname = assetPaths.get(path);
           assetRequest = new Request(assetURL,request);

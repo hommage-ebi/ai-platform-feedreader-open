@@ -9,17 +9,17 @@ export function sitesIdentity(request, env) {
   return userId ? {userId} : {status:401,error:'Authentication required'};
 }
 
-/** Provider-independent owner authorization. A different verified identity
- * provider can replace sitesIdentity at factory construction, but never skip
- * this gate. There is deliberately no environment-selected permissive mode. */
+/** Sites enforces the owner-only audience before forwarding requests. Use its
+ * verified Site identity directly for user-owned records. Other deployments
+ * require an explicit owner ID; an optional pin still takes precedence. */
 export function ownerAuthorization(identity, env) {
-  if (typeof env.OWNER_USER_ID !== 'string' || !env.OWNER_USER_ID.trim()) {
-    return {status:503,error:'Authentication unavailable'};
-  }
+  const owner = typeof env.OWNER_USER_ID === 'string' && env.OWNER_USER_ID.trim() ? env.OWNER_USER_ID : null;
+  const ownerPrivate = env.TRUSTED_AUTH_HEADER === 'hosting' && env.SITES_OWNER_PRIVATE === 'confirmed';
+  if (!owner && !ownerPrivate) return {status:503,error:'Authentication unavailable'};
   if (identity?.error) return identity;
-  if (typeof identity?.userId !== 'string' || !identity.userId) {
+  if (typeof identity?.userId !== 'string' || !identity.userId.trim()) {
     return {status:401,error:'Authentication required'};
   }
-  if (identity.userId !== env.OWNER_USER_ID) return {status:403,error:'Forbidden'};
+  if (owner && identity.userId !== owner) return {status:403,error:'Forbidden'};
   return {userId:identity.userId};
 }

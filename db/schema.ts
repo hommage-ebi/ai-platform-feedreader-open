@@ -4,6 +4,13 @@ export const readingState = sqliteTable('reading_state', {
   articleId: text('article_id').notNull(),
   readAt: text('read_at').notNull(),
 }, table => [primaryKey({ columns: [table.userId, table.articleId] })]);
+
+// Legacy setup record retained for migration history; authentication no longer reads it.
+export const siteOwnerSetup = sqliteTable('site_owner_setup', {
+  singleton: integer('singleton').primaryKey().notNull(),
+  userId: text('user_id').notNull(),
+  createdAt: text('created_at').notNull(),
+});
 export const articlePreferences = sqliteTable('article_preferences', {
   userId: text('user_id').notNull(),
   articleId: text('article_id').notNull(),
