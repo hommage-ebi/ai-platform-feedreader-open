@@ -53,8 +53,7 @@ function tagsFor(data) { const tags = text('div', '', 'interest-tags'); for (con
 function control(field, active, callback) { const b = text('button', '', 'icon-button'); paintControl(b, field, active); b.onclick = callback; return b; }
 function renderList() {
   const scroll = !compact() || !articleOpen() ? readScroll('list') : listScrollPosition, list = $('#list'); list.replaceChildren();
-  const scope = scoped(); $('#unread-count').textContent = `未読 ${scope.filter(p => !store.states[p.id]?.read).length}`;
-  $('#count').textContent = `${visible.length} articles`; $('#bulk').disabled = !scope.some(p => !store.states[p.id]?.read);
+  const scope = scoped(); $('#bulk').disabled = !scope.some(p => !store.states[p.id]?.read);
   if (!visible.length) { const empty = text('div', '', 'empty'); empty.append(text('h2', mode === 'unread' ? '未読の記事はありません' : 'まだ記事はありません'), text('p', '公開された記事がここに並びます。')); list.append(empty); }
   for (const paper of visible) {
     const state = store.states[paper.id] || {}, row = text('div', '', 'paper-row'); row.dataset.id = paper.id; row.setAttribute('role', 'listitem'); row.classList.toggle('is-read', !!state.read); row.classList.toggle('selected', paper.id === selected);
