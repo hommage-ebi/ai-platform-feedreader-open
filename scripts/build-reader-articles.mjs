@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
 import createDOMPurify from 'dompurify';
 import { contained, readCollection, versionsOf } from './content-contract.mjs';
+import {validateArticleImagePaths} from '../worker/image-contract.js';
 // One canonical, side-effect-free projection for generation and verification.
 export function expectedReaderBody(source,article,version) {
  const window=new JSDOM(source).window;
@@ -13,7 +14,7 @@ export function expectedReaderBody(source,article,version) {
   if(narratives.length!==1)throw new Error(`Expected one narrative: ${version.html_path}`);
   const narrative=narratives[0];
   const images=[...narrative.querySelectorAll('img')];
-  if(images.length!==version.stored_images.length||images.some((img,i)=>img.getAttribute('src')!==version.stored_images[i].serving_path))throw new Error('Article images mismatch stored_images');
+  validateArticleImagePaths(images.map(img=>img.getAttribute('src')),version);
   for(const figure of narrative.querySelectorAll('figure'))if(!figure.querySelector('figcaption')?.textContent.trim())throw new Error('Missing caption');
   const purify=createDOMPurify(window);
   const html=purify.sanitize(narrative.innerHTML,{FORBID_TAGS:['style','script','iframe','object','embed','form'],FORBID_ATTR:['style'],ALLOW_DATA_ATTR:false});

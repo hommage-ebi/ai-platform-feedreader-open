@@ -46,7 +46,7 @@ flowchart TB
         split["分類入出力の整理<br/>Component: Python / split_merge.py<br/>分割・分類結果検証／統合<br/>include + uncertainを採用"]:::internal
         tasks["モデル作業指示の作成<br/>Component: Python / make_tasks.py + prompts/<br/>prompt全文・入出力絶対パス<br/>モデル・推論設定をJSON化"]:::internal
         prepare["同版原資料の準備<br/>Component: Python / prepare.py<br/>header_metadata.py<br/>原HTMLまたはPDF・書誌・出典を用意"]:::internal
-        assemble["出力検証・記事化<br/>Component: Python / assemble.py + selected_figures.py<br/>result・summary・選択図の指定を検証<br/>WebP保存・照合・記事HTML生成"]:::internal
+        assemble["出力検証・記事化<br/>Component: Python / assemble.py + selected_figures.py<br/>result・summary・選択図の指定を検証<br/>HTML図の直リンク・PDF図保存・記事HTML生成"]:::internal
         adapter["共通記事契約への変換<br/>Component: Python / reader_adapter.py<br/>完成記事だけを直列マージ<br/>既存記事・版・図を保持"]:::internal
         workflow -->|"収集を呼ぶ / Python"| collect
         workflow -->|"分割・統合を呼ぶ / Python"| split
@@ -59,7 +59,7 @@ flowchart TB
         assemble -->|"完成HTML / files"| adapter
     end
     arxiv["arXiv<br/>External Software System<br/>公式RSS・同版HTML／PDF<br/>必要時に同版を再取得"]:::external
-    r2["掲載図<br/>Container: private R2<br/>同寸法lossless WebP・選択済み元SVG<br/>MIME・SHA-256・寸法等を照合"]:::data
+    r2["掲載図<br/>Container: private R2<br/>PDF切り抜きのlossless WebP<br/>MIME・SHA-256・寸法等を照合"]:::data
     articles["記事の正規データ<br/>Container: Git / files<br/>data/articles/<br/>共通JSON・HTML・manifest"]:::data
     agent -->|"各工程を起動 / CLI"| workflow
     agent -->|"アダプターを起動 / CLI"| adapter
@@ -70,7 +70,7 @@ flowchart TB
     runs -->|"保存済み解説結果を読込・検証 / files"| assemble
     collect -->|"当日RSS取得 / HTTPS"| arxiv
     prepare -->|"同版原資料を取得 / HTTPS"| arxiv
-    assemble -->|"選択済みHTML画像を取得 / HTTPS"| arxiv
+    assemble -->|"HTML原図のURLを解決 / HTTPS"| arxiv
     assemble -->|"共通image_store経由の保存・照合 / HTTPS"| r2
     adapter -->|"完成記事を保存 / files"| articles
 
@@ -178,15 +178,23 @@ claimは当日・過去分を通じた同時起動数と、同一入力・プロ
 
 ### 記事を組み立てて保存する
 
-画像を含む記事では、[Sites管理R2への保存設定](publishing.md#pythonからsites管理r2へ保存する) に従い、`READER_SITE_URL`（HTTPSのSite origin）と `SITES_SERVICE_TOKEN` を実行プロセスの環境に渡す。初回のSite設定と保存経路の有効化は同文書に従う。画像保存はSites経由のみとし、接続設定がなければ失敗する。秘密値はGit・ログ・記事・プロンプトへ保存しない。バケットの非公開設定と認証付き配信経路を確認する。図がない記事にはR2アップロード接続を要求しない。ラスタ画像の透過情報は保持する。元ファイルの形式・bit深度・色モデルを変換前に検査する。[画像契約](data-contracts.md#画像のwebpr2保存契約必須)で対応していない入力や複数フレーム画像は、情報を捨てて変換せず、アップロード前にその記事の画像工程を失敗として記録する。
+PDF切り抜きを含む記事では、[Sites管理R2への保存設定](publishing.md#pythonからsites管理r2へ保存する) に従い、`READER_SITE_URL`（HTTPSのSite origin）と `SITES_SERVICE_TOKEN` を実行プロセスの環境に渡す。初回のSite設定と保存経路の有効化は同文書に従う。画像保存はSites経由のみとし、接続設定がなければ失敗する。秘密値はGit・ログ・記事・プロンプトへ保存しない。バケットの非公開設定と認証付き配信経路を確認する。HTML画像だけの記事や図がない記事にはR2アップロード接続を要求しない。ラスタ画像の透過情報は保持する。元ファイルの形式・bit深度・色モデルを変換前に検査する。[画像契約](data-contracts.md#画像のwebpr2保存契約必須)で対応していない入力や複数フレーム画像は、情報を捨てて変換せず、アップロード前にその記事の画像工程を失敗として記録する。
 
-`assemble` がモデル出力と選択指定を原資料に照合し、選ばれたHTML画像やPDF領域だけを取得・切り出して [画像契約](data-contracts.md#画像のwebpr2保存契約必須) に従って変換・保存する。PDFは指定ページの選択範囲だけを216 dpiで描画し、そのラスタ画像をlossless WebPへ変換する。HTMLで選択したSVGは安全性を検証し、元SVGも非公開R2へ保持する。R2に保存した画像の実体とmanifestを照合し、成功した記事のHTMLを組み立てる。アダプターは完成記事だけを保存先へ反映する。
+`assemble` がモデル出力と選択指定を原資料に照合する。HTML図は選択した元要素から同じ版のarXiv画像URLを解決し、`linked_images` と本文のsrcへ記録する。HTML画像の実体は取得・変換・R2保存しない。PDF図だけを指定ページの選択範囲から216 dpiで描画し、lossless WebPとしてR2へ保存・読戻し照合する。保存画像だけを `stored_images` とmanifestに登録して記事HTMLを組み立てる。アダプターは完成記事だけを保存先へ反映する。
 
     uv run --project "$PROJECT_ROOT/pipeline" --locked --no-sync python "$PROJECT_ROOT/pipeline/arxiv/workflow.py" assemble
     uv run --project "$PROJECT_ROOT/pipeline" --locked --no-sync python "$PROJECT_ROOT/pipeline/arxiv/reader_adapter.py" --site site --run run --articles-dir "$PROJECT_ROOT/data/articles"
     cd "$PROJECT_ROOT"
 
 アダプターは、現在の候補・分類結果・モデル出力の検証記録と一致する完成記事をコレクションへ反映する。未公開の記事は同じ論文版でも再生成した内容に更新できる。その処理に保存された設定で分類から除外された、または入力・検証記録が一致しない未公開記事については、そのrunの所有参照を外す。同一生成内容を別runも検証・採用済みの場合は、そのrunの参照を保持する。必要な記録が欠けている場合は除外や空結果と見なさず、コレクション変更を止める。公開済み、または公開結果の確認中の版は上書きしない。同じコレクションへの反映は直列化し、個別の失敗を記録する。保存対象の記事と実行記録をGitへコミットし、リモートへ反映する。未完了の対象は同じ実行の記録から再開する。
+
+### 保存済みHTML図を直リンクへ移行する
+
+利用者が既存記事の配信方式変更を明示した場合は、次の移行コマンドで同版原HTMLのハッシュと選択図を照合して画像srcだけを変更する。本文・リード・図の選択・キャプション・既読と評価は変更しない。公開済みの元のrelease記録は保持し、変更後は改めてビルド・公開して新しいハッシュを記録する。旧R2オブジェクトは削除せず、現行manifestからHTML図の登録を外す。
+
+```sh
+python -m pipeline.arxiv.link_html_images --project-root /path/to/project --run /path/to/project/data/runs/DATE/RUN_ID --cache /path/to/project/.cache/direct-image-migration
+```
 
 ## 失敗・部分公開・再開
 

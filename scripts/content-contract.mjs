@@ -1,5 +1,5 @@
 import {validArticleId,htmlPaths} from '../worker/content-identity.js';
-import {validateImageManifest} from '../worker/image-contract.js';
+import {validateImageManifest,validateLinkedImages} from '../worker/image-contract.js';
 import {createHash} from 'node:crypto';
 import { readFile, access } from 'node:fs/promises';
 import { resolve, relative, isAbsolute } from 'node:path';
@@ -36,6 +36,7 @@ export async function readCollection(root='data/articles') {
       if((arxiv||version.lead_ja!==undefined)&&(!Array.isArray(version.lead_ja)||version.lead_ja.length!==3||version.lead_ja.some(x=>typeof x!=='string'||!x.trim())))throw new Error('Exactly three lead items required');
       for(const field of ['authors','affiliations','institution_names'])if((arxiv||version[field]!==undefined)&&!Array.isArray(version[field]))throw new Error(`Invalid ${field}`);
       if(!Array.isArray(version.stored_images))throw new Error('Missing stored_images');
+      validateLinkedImages(article,version);
       if(!safeRelative(version.html_path).startsWith('papers/')||!version.html_path.endsWith('.html'))throw new Error('Article path must be papers/*.html');
       htmlPaths(version.html_path);
       if(version.content_sha256!==undefined){
@@ -48,7 +49,7 @@ export async function readCollection(root='data/articles') {
     }
     const latest=versionsOf(article).find(v=>v.version===(article.version||'current'));
     if(!latest)throw new Error('Current article version absent from history');
-    for(const field of ['lead_ja','authors','affiliations','institution_names','stored_images','html_path'])if(JSON.stringify(field==='stored_images'?(article[field]||[]):article[field])!==JSON.stringify(latest[field]))throw new Error(`Latest article ${field} differs from version`);
+    for(const field of ['lead_ja','authors','affiliations','institution_names','stored_images','linked_images','html_path'])if(JSON.stringify(['stored_images','linked_images'].includes(field)?(article[field]||[]):article[field])!==JSON.stringify(['stored_images','linked_images'].includes(field)?(latest[field]||[]):latest[field]))throw new Error(`Latest article ${field} differs from version`);
   }
   validateImageManifest(manifest,ids);
   const referenced=new Set(papers.flatMap(article=>versionsOf(article).flatMap(version=>version.stored_images.map(image=>JSON.stringify([article.id,version.version,image.source_ref])))));

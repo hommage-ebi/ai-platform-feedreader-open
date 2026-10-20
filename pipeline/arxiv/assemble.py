@@ -5,7 +5,7 @@ from urllib.parse import quote
 from pipeline.shared.runtime import digest, lock, project_root, read, record, write
 from .common import identity, paper_path
 from pipeline.shared.image_store import store_figure,SitesStore
-from .selected_figures import validate_selection,materialize_selection
+from .selected_figures import validate_selection,materialize_selection,link_html_figure
 IMAGE_RE=re.compile(r'^!\[([^\]\n]*)\]\(([^\s)]+)\)\s*$',re.M)
 
 def validate_output(paper_dir, require_provenance=False):
@@ -61,7 +61,9 @@ def render_narrative(summary,figures,stored):
     matches=list(IMAGE_RE.finditer(text))
     for match,fig,img in reversed(list(zip(matches,figures,stored))):
         token=f'READERFIGURE{counter:08d}END';counter+=1
-        fragments[token]=f'<figure><img src="{html.escape(img["serving_path"],quote=True)}" alt="{html.escape(match.group(1),quote=True)}" width="{img["width"]}" height="{img["height"]}" loading="lazy"><figcaption>{html.escape(fig["number"])} {html.escape(fig["caption"])}</figcaption></figure>'
+        dimensions=f' width="{img["width"]}" height="{img["height"]}"' if 'width' in img and 'height' in img else ''
+        url=img.get('url') or img['serving_path']
+        fragments[token]=f'<figure><img src="{html.escape(url,quote=True)}" alt="{html.escape(match.group(1),quote=True)}"{dimensions} loading="lazy" referrerpolicy="no-referrer"><figcaption>{html.escape(fig["number"])} {html.escape(fig["caption"])}</figcaption></figure>'
         text=text[:match.start()]+token+text[match.end():]
     rendered=markdown.markdown(text,extensions=['sane_lists'])
     rendered=bleach.clean(rendered,tags=['p','h2','h3','h4','h5','h6','ul','ol','li','strong','em','a','blockquote','code','pre','br','hr'],attributes={'a':['href','title']},protocols=['https','http'],strip=True)
@@ -73,7 +75,7 @@ def render_narrative(summary,figures,stored):
 def generation_identity(result,metadata,source,summary,figures,topics):
     # Scientific output reuse and classification presentation are independent.
     # Topic IDs still belong to the assembled record's identity.
-    return digest({'result':result,'metadata':metadata,'source_hash':source['sha256'],
+    return digest({'image_policy':'arxiv-html-direct-v1','result':result,'metadata':metadata,'source_hash':source['sha256'],
                    'summary':summary,'figures':figures,'topics':topics})
 
 def assemble_one(run,paper,store=None):
@@ -97,10 +99,15 @@ def assemble_one(run,paper,store=None):
                     all_records=read(Path(run)/'site/papers.json',[]);indexed={identity(r):r for r in all_records};indexed[identity(old)]=old;write(Path(run)/'site/papers.json',list(indexed.values()))
                 record(run,'assemble','complete',{'reused':True,'content_sha256':old['content_sha256']},'/'.join(identity(paper)))
                 return old
-    if result['figures'] and store is None:store=SitesStore()
-    stored=[store_figure(paper,f,materialize_selection(p,source,f),p,store) for f in result['figures']]
-    body=render_narrative(summary,result['figures'],stored)
+    linked=[];stored=[]
+    if source['kind']=='html':
+        linked=[link_html_figure(p,source,f) for f in result['figures']]
+    else:
+        if result['figures'] and store is None:store=SitesStore()
+        stored=[store_figure(paper,f,materialize_selection(p,source,f),p,store) for f in result['figures']]
+    body=render_narrative(summary,result['figures'],linked or stored)
     record_data={**{k:paper.get(k,[]) for k in ['id','version','date']},'title':meta.get('title',paper['title']),'source':'arxiv','title_ja':result['title_ja'],'summary_ja':result['summary_ja'],'lead_ja':result['lead_ja'],'authors':meta['authors'],'affiliations':meta['affiliations'],'institution_names':meta['institution_names'],'source_url':result['source_url'],'tags':paper.get('topics',[]),'stored_images':stored,'html_path':f"papers/{quote(paper['id'],safe='')}/{paper['version']}.html"}
+    record_data['linked_images']=linked
     esc=lambda s:html.escape(str(s),quote=True)
     header=f'<header><h1>{esc(record_data["title"])}</h1><p class="title-ja">{esc(result["title_ja"])}</p><p class="authors">{esc(", ".join(meta["authors"]))}</p><p class="institutions">{esc(", ".join(meta["institution_names"]))}</p><ol class="lead">'+''.join('<li>'+esc(x)+'</li>' for x in result['lead_ja'])+'</ol></header>'
     document='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'+esc(record_data['title'])+'</title><script type="module" src="/standalone.js"></script></head><body><article>'+header+'<div class="narrative">'+body+'</div><a href="'+esc(result['source_url'])+'">原論文</a></article></body></html>'

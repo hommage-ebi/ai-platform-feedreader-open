@@ -28,6 +28,7 @@ pipeline/<source>/
 - `pipeline.shared.agents`：`load_agents(root)` でモデル・推論設定・並列上限を読む。設定形式は [共通設定](configuration.md) を参照
 - `pipeline.shared.runtime`：`read` / `write`（JSON）、`digest`（ハッシュ）、`lock`（排他）、`record`（工程記録）、`project_root`（ルート解決）
 - `pipeline.shared.collection`：`collection_lock(dest, run)` 内で `recover_collection(dest)` により未完了更新を復旧し、`commit_collection(dest, files)` で記事コレクションを更新
+- arXiv HTMLの原図は `linked_images` の同版arXiv URLを直接表示し、`image_store` へ渡さない。
 - `pipeline.shared.image_store`：`store_figure(...)` で図をWebP化・保存・読戻し照合。戻り値の記録を記事の `stored_images` とmanifestに保存し、HTMLには `serving_path` を使う。[画像契約](data-contracts.md#画像のwebpr2保存契約必須)・[接続設定](publishing.md#pythonからsites管理r2へ保存する) を参照
 
 収集・原資料の検証・タスク作成は情報源側で実装する。arXiv固有の [実行予約・run記録](pipeline-arxiv.md) は別情報源へ自動適用されないため、並行実行・再開・公開集計に参加する場合は対応を追加する。

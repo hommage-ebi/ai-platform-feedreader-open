@@ -24,7 +24,7 @@ flowchart TB
             worker["Worker<br/>Container: Cloudflare Worker<br/>worker/<br/>認証・記事／図の配信・状態／保存API"]:::internal
             assets["配信アセット<br/>Container: Static files<br/>dist/client/<br/>UI・一覧・記事HTML・本文JSON"]:::data
             d1["ユーザー状態<br/>Container: D1 / SQLite<br/>既読・★・bad"]:::data
-            r2["掲載図・公開結果の記録<br/>Container: private R2<br/>WebP・元ベクター素材・公開receipt"]:::data
+            r2["掲載図・公開結果の記録<br/>Container: private R2<br/>PDF切り抜きWebP・公開receipt"]:::data
         end
         source -->|"完成記事を保存 / files"| articles
         build -->|"共通記事契約を読込 / files"| articles
@@ -108,7 +108,7 @@ ai-platform-feedreader/
 │       ├── prepare.py                  # 同版HTML/PDF・書誌・出典の準備
 │       ├── header_metadata.py          # 原題・著者・所属の整理
 │       ├── selected_figures.py         # 選択図の検証と取得・切出し
-│       ├── assemble.py                 # 出力検証・図保存・記事HTML生成
+│       ├── assemble.py                 # 出力検証・HTML図直リンク・PDF図保存
 │       ├── reader_adapter.py           # 完成記事を共通記事形式へ変換
 │       ├── config/sources.json         # 収集するarXivカテゴリ
 │       ├── prompts/                    # arXivの分類・解説プロンプト

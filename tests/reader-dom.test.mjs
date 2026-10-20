@@ -12,9 +12,9 @@ function windowFor(markup='<article id="article"></article>') { const dom = new 
 const tick = () => new Promise(resolve=>setTimeout(resolve,35));
 test('sanitizer removes executable content and remote figures while keeping semantics',()=>{
  const w=windowFor(); w.eval(rendererCode);
- const fragment=w.ReaderModule.safeHTML('<h2 onclick="alert(1)">Title</h2><script>bad()</script><iframe src="https://evil.test"></iframe><img src="https://evil.test/tracker" onerror="bad()"><img src="/api/images/abc"><a href="javascript:bad()">bad</a><figure><figcaption>図1 内容</figcaption></figure>');
+ const fragment=w.ReaderModule.safeHTML('<h2 onclick="alert(1)">Title</h2><script>bad()</script><iframe src="https://evil.test"></iframe><img src="https://evil.test/tracker" onerror="bad()"><img src="/api/images/abc"><img src="https://arxiv.org/html/2610.22855v1/x1.png"><img src="https://arxiv.org.evil.test/html/2610.22855v1/x1.png"><a href="javascript:bad()">bad</a><figure><figcaption>図1 内容</figcaption></figure>');
  const article=w.document.querySelector('article'); article.append(fragment);
- assert.equal(article.querySelector('script,iframe,[onclick],[onerror]'),null); assert.equal(article.querySelector('a').hasAttribute('href'),false); assert.equal(article.querySelectorAll('img')[0].hasAttribute('src'),false); assert.equal(article.querySelectorAll('img')[1].getAttribute('src'),'/api/images/abc'); assert.equal(article.querySelector('figcaption').textContent,'図1 内容'); w.close();
+ assert.equal(article.querySelector('script,iframe,[onclick],[onerror]'),null); assert.equal(article.querySelector('a').hasAttribute('href'),false); assert.equal(article.querySelectorAll('img')[0].hasAttribute('src'),false); assert.equal(article.querySelectorAll('img')[1].getAttribute('src'),'/api/images/abc'); assert.equal(article.querySelectorAll('img')[2].getAttribute('src'),'https://arxiv.org/html/2610.22855v1/x1.png'); assert.equal(article.querySelectorAll('img')[2].referrerPolicy,'no-referrer'); assert.equal(article.querySelectorAll('img')[3].hasAttribute('src'),false); assert.equal(article.querySelector('figcaption').textContent,'図1 内容'); w.close();
 });
 test('dynamic render handles inline and display math, version replacement, and caching',async()=>{
  const w=windowFor(); w.eval(rendererCode); let calls=0;

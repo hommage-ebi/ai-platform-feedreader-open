@@ -79,6 +79,15 @@ def validate_selection(directory,source,figure):
     return digest(figure['selection'])
 
 
+def link_html_figure(directory,source,figure):
+    """Keep exact-version arXiv assets remote; never download or upload them."""
+    if source.get('kind')!='html':raise ValueError('Direct image links require HTML')
+    resolved=resolve_selection(directory,source,figure)
+    if 'url' not in resolved:raise ValueError('Selected HTML figure has no direct asset URL')
+    return {'source_ref':figure['src'],'url':resolved['url'],'selection':figure['selection'],
+            'source_document_sha256':source['sha256']}
+
+
 def materialize_selection(directory,source,figure,fetcher=fetch):
     resolved=resolve_selection(directory,source,figure);selection=figure['selection']
     root=Path(directory)/'figures';root.mkdir(exist_ok=True)

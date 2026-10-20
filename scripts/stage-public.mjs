@@ -4,6 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
 import { readCollection, contained, versionsOf } from './content-contract.mjs';
+import {validateArticleImagePaths} from '../worker/image-contract.js';
 const allowedTags = new Set('html head body title meta link script article section main header footer nav aside div span p h1 h2 h3 h4 h5 h6 a img figure figcaption ul ol li dl dt dd table caption colgroup col thead tbody tfoot tr th td pre code blockquote strong em b i u s del ins sub sup small mark abbr time br hr wbr details summary'.split(' '));
 function safeLink(value) {
  if (/[\u0000-\u0020\u007f\\]/.test(value) || value.startsWith('//')) return false;
@@ -11,7 +12,7 @@ function safeLink(value) {
  try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
 }
 /** Reject unsafe source without rewriting it: only inject the shared CSS/module. */
-export function stageHTML(html, {stored_images = []} = {}) {
+export function stageHTML(html, version = {}) {
  const dom = new JSDOM(html, {includeNodeLocations: true});
  try {
   const doc = dom.window.document;
@@ -39,12 +40,12 @@ export function stageHTML(html, {stored_images = []} = {}) {
    if (tag === 'img') {
     if (!element.closest('.narrative')) throw new Error('Standalone image outside narrative');
     const path = element.getAttribute('src');
-    if (!/^\/api\/images\/[a-f0-9]{64}$/.test(path || '') || !stored_images.some(image => image.serving_path === path)) throw new Error('Unregistered standalone image');
+    if(!(version.stored_images||[]).some(image=>image.serving_path===path)&&!(version.linked_images||[]).some(image=>image.url===path))throw new Error('Unregistered standalone image');
     images.push(path);
    }
   }
   if (scripts.length > 1 || styles.length > 1) throw new Error('Duplicate standalone assets');
-  if (images.length !== stored_images.length || images.some((path, i) => path !== stored_images[i].serving_path)) throw new Error('Standalone image manifest mismatch');
+  validateArticleImagePaths(images,version);
   const additions = [];
   if (!styles.length) { const end = dom.nodeLocation(doc.head)?.endTag?.startOffset; if (end === undefined) throw new Error('Standalone requires an explicit closing head'); additions.push([end, '<link rel="stylesheet" href="/assets/reader.css">']); }
   if (!scripts.length) { const end = dom.nodeLocation(doc.body)?.endTag?.startOffset; if (end === undefined) throw new Error('Standalone requires an explicit closing body'); additions.push([end, '<script type="module" src="/standalone.js"></script>']); }

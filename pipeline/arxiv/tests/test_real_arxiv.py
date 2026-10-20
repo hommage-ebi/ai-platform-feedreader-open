@@ -116,12 +116,13 @@ class RealArxivTest(unittest.TestCase):
         store = MemoryStore()
         with patch('pipeline.arxiv.assemble.materialize_selection', side_effect=lambda p,s,f:materialize_selection(p,s,f,fetcher=fetcher)):
             article = assemble_one(self.run, read(self.run/'run/selected.json')[0], store=store)
-        self.assertEqual([s['source_ref'] for s in article['stored_images']], [f'selected:fig{i}' for i in range(1,7)])
-        self.assertEqual(len([key for key in store.objects if key.endswith('.webp')]), 6)
+        images=article['linked_images'] if source['kind']=='html' else article['stored_images']
+        self.assertEqual([s['source_ref'] for s in images], [f'selected:fig{i}' for i in range(1,7)])
+        self.assertEqual(len([key for key in store.objects if key.endswith('.webp')]), 0 if source['kind']=='html' else 6)
         html = (self.run/'site'/article['html_path']).read_text()
         self.assertEqual(html.count('<figure>'), 6)
         self.assertNotIn('selected:', html)
-        self.assertNotIn('https://arxiv.org/html/2310.06825v1/images/', html)
+        if source['kind']=='html':self.assertIn('https://arxiv.org/html/2310.06825v1/', html)
         for figure in figures: self.assertIn(figure['number'], html)
         self.assertFalse((directory/'figures.json').exists())
         return directory, article, store
@@ -136,12 +137,10 @@ class RealArxivTest(unittest.TestCase):
         self.assertEqual(source['kind'], 'html')
         self.assertEqual(requested, [source['url']])
         directory, article, store = self.assemble_fixture(source, fetcher)
-        self.assertEqual(requested, [source['url']]+[a['url'] for a in self.manifest['assets'][2:]])
-        for stored, asset in zip(article['stored_images'], self.manifest['assets'][2:]):
-            self.assertEqual(stored['source_sha256'], asset['sha256'])
-            self.assertEqual(stored['original_byte_size'], asset['bytes'])
-        vector = article['stored_images'][2]
-        self.assertEqual(store.get(vector['original_object_key'])[0], self.assets[self.manifest['assets'][4]['url']][0])
+        self.assertEqual(requested, [source['url']])
+        self.assertEqual([i['url'] for i in article['linked_images']],[a['url'] for a in self.manifest['assets'][2:]])
+        self.assertEqual(article['stored_images'],[])
+        self.assertEqual(store.objects,{})
         soup = BeautifulSoup((directory/'source.html').read_text(), 'html.parser')
         self.assertEqual(len([f for f in soup.find_all('figure') if '.F' in f.get('id','')]), 6)
         self.assertEqual(len([f for f in soup.find_all('figure') if '.T' in f.get('id','')]), 5)

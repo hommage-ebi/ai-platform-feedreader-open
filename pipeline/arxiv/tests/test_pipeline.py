@@ -116,7 +116,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual({Path(f).name for f in task['input_files']},{'source.html','source.json','metadata.json','fulltext.html.txt'})
         self.assertNotIn('figures.json',task['input_files'])
 
-    def test_selected_figure_is_materialized_only_after_finish(self):
+    def test_html_selection_is_linked_without_downloading_or_storage(self):
         from PIL import Image
         from pipeline.arxiv.selected_figures import materialize_selection
         from pipeline.arxiv.tests.test_adversarial_sources import MemoryStore
@@ -141,13 +141,16 @@ class PipelineTests(unittest.TestCase):
         store=MemoryStore()
         with patch('pipeline.arxiv.assemble.materialize_selection',side_effect=lambda directory,src,fig:materialize_selection(directory,src,fig,fetcher=fetcher)):
             article=assemble_one(self.run,PAPER,store=store)
-        self.assertEqual(urls,[source['url'],source['url']+'/chosen.png'])
-        self.assertEqual(len(article['stored_images']),1)
-        self.assertEqual(article['stored_images'][0]['source_ref'],'selected:fig1')
-        self.assertEqual(article['stored_images'][0]['source_sha256'],digest(raw.getvalue()))
-        self.assertEqual(len([key for key in store.objects if key.endswith('.webp')]),1)
+        self.assertEqual(urls,[source['url']])
+        self.assertEqual(article['stored_images'],[])
+        self.assertEqual(article['linked_images'][0]['source_ref'],'selected:fig1')
+        self.assertEqual(article['linked_images'][0]['url'],source['url']+'/chosen.png')
+        self.assertEqual(store.objects,{})
+        self.assertFalse((p/'figures').exists())
         rendered=(self.run/'site'/article['html_path']).read_text()
         self.assertEqual(rendered.count('<figure>'),1);self.assertNotIn('unused.png',rendered)
+        self.assertIn('src="'+source['url']+'/chosen.png"',rendered)
+        self.assertIn('referrerpolicy="no-referrer"',rendered)
 
     def test_selected_descriptors_require_order_provenance_and_unique_assets(self):
         p=self.fixture()

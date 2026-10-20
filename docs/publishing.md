@@ -20,7 +20,7 @@ flowchart LR
         reader["Reader<br/>Container: Browser / JavaScript<br/>reader/<br/>一覧・本文・版・図・操作・状態同期"]:::internal
         worker["Worker<br/>Container: Cloudflare Worker<br/>worker/index.js<br/>本人認証・記事／画像配信・状態API<br/>公開一覧・manifestを参照"]:::internal
         d1["ユーザー状態<br/>Container: D1 / SQLite<br/>reading_state・article_preferences<br/>user_id, article_id／本文・画像は保存しない"]:::data
-        r2["掲載図<br/>Container: private R2<br/>lossless WebP・必要な元ベクター素材<br/>原論文全体は保存しない"]:::data
+        r2["掲載図<br/>Container: private R2<br/>PDF切り抜きのlossless WebP<br/>原論文全体は保存しない"]:::data
         cli -->|"完成記事を保存 / files"| articles
         cli -->|"工程記録の読書き・原資料の一時利用 / files"| runs
         cli -->|"掲載図を保存・実体照合 / Sites認証付き保存API"| worker
@@ -97,6 +97,8 @@ Sitesの利用条件・作成・配備・共有設定は、OpenAIの[利用ガ�
 4. 下記の画像転送を使う場合は `SITES_STORAGE_ENABLED=true` にし、Pythonプロセスへ接続先とサービス用トークンを渡す
 
 ### PythonからSites管理R2へ保存する
+
+arXiv HTMLの画像は同版arXiv URLへの直リンクとし、R2へ保存しない。PDF切り抜きなど保存対象だけが以下の経路を使う。
 
 Sitesは `.openai/hosting.json` の `r2: "IMAGES"` を管理・bindする。Pythonは `SitesStore()` のみを使い、Workerの `/api/storage?key=...` へHTTPSでPUT／GETする。登録前の図も保存・照合でき、読者向け `/api/images/<sha256>` は公開manifest登録済みの図だけを配信する。
 

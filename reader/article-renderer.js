@@ -1,14 +1,16 @@
 import DOMPurify from 'dompurify';
 import renderMathInElement from 'katex/contrib/auto-render';
 import 'katex/dist/katex.min.css';
+import {isArxivImageURL} from '../worker/image-contract.js';
 
 export function safeHTML(html, doc = document) {
   const purifier = typeof DOMPurify.sanitize === 'function' ? DOMPurify : DOMPurify(doc.defaultView);
   const fragment = purifier.sanitize(String(html || ''), { RETURN_DOM_FRAGMENT: true, USE_PROFILES: { html: true }, FORBID_TAGS: ['style', 'form', 'input', 'button', 'iframe', 'object', 'embed', 'script'], FORBID_ATTR: ['style', 'srcset', 'id', 'name'] });
   for (const image of fragment.querySelectorAll('img')) {
     const src = image.getAttribute('src') || '';
-    // Only the authenticated, manifest-checked image route may load an image.
-    if (!/^\/api\/images\//.test(src) || src.includes('..') || src.includes('\\')) image.removeAttribute('src');
+    // PDF crops use authenticated storage; original HTML assets stay on arXiv.
+    if ((!/^\/api\/images\//.test(src) || src.includes('..') || src.includes('\\')) && !isArxivImageURL(src)) image.removeAttribute('src');
+    image.referrerPolicy = 'no-referrer';
     image.loading = 'lazy'; image.decoding = 'async';
   }
   for (const anchor of fragment.querySelectorAll('a')) {
