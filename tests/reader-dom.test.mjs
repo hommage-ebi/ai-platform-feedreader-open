@@ -152,3 +152,10 @@ test('mobile native scroll offsets are restored after sidebar and list navigatio
  w.fetch=async(url,options)=>({ok:true,json:async()=>url==='/papers.json'?[{id:'a',title:'A',version:'v1'}]:url==='/api/reading-state'?{readIds:[]}:url==='/api/article-preferences'?{starredIds:[],badIds:[]}:url.startsWith('/reader-articles/')?{id:'a',version:'v1',title:'A',html:'<p>Body</p>'}:{}});
  w.eval(appCode);await tick();w.scrollY=320;w.document.querySelector('.paper-open').click();await tick();assert.equal(w.scrollY,0);w.scrollY=480;w.document.querySelector('#menu').click();assert.equal(w.scrollY,0);w.document.querySelector('#close-feeds').click();assert.equal(w.scrollY,480);w.document.querySelector('#back').click();assert.equal(w.scrollY,320);w.close();
 });
+
+test('desktop hides mobile navigation and constrains each scrolling pane',async()=>{
+ const w=windowFor(html),style=w.document.createElement('style');style.textContent=await readFile(`${root}reader/reader.css`,'utf8');w.document.head.append(style);
+ for(const selector of ['#menu','#close-feeds','.article-toolbar','#article-actions'])assert.equal(w.getComputedStyle(w.document.querySelector(selector)).display,'none',selector);
+ for(const selector of ['#list','#article-scroll'])assert.equal(w.getComputedStyle(w.document.querySelector(selector)).overflow,'auto',selector);
+ assert.equal(w.getComputedStyle(w.document.querySelector('#article-pane')).minHeight,'0');assert.equal(w.getComputedStyle(w.document.body).overflow,'hidden');w.close();
+});
