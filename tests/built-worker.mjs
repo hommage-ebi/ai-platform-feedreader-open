@@ -31,7 +31,7 @@ test('owner-private Sites login opens Reader without setup screens or registrati
  assert.match(await readFile('dist/client/reader-shell.html','utf8'),/ai-platform-feedreader/);
  const sitesEnv={...env,OWNER_USER_ID:undefined,SITES_OWNER_PRIVATE:'confirmed',DB:{prepare:()=>{throw Error('UI must not query owner registration');}}};
  const page=await sitesWorker.fetch(request('/','site-owner'),sitesEnv);
- assert.equal(page.status,200);assert.match(await page.text(),/YOUR READING DESK/);
+ assert.equal(page.status,200);assert.match(await page.text(),/id="search" type="search"/);
  assert.doesNotMatch(await readFile('dist/server/index.js','utf8'),/利用を開始する|site_owner_setup/);
  assert.equal((await sitesWorker.fetch(request('/'),sitesEnv)).status,401);
  assert.equal((await sitesWorker.fetch(request('/api/setup/activate','site-owner'),sitesEnv)).status,404);

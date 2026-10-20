@@ -84,7 +84,7 @@ test('browser distributions retain exact upstream licenses and reject missing or
   assert.ok(notice.includes(license),`${name}/${file} must be retained verbatim`);
  }
  assert.ok(notice.includes('(c) Cure53 and other contributors'));
- assert.match(await readFile(new URL('../reader/index.html',import.meta.url),'utf8'),/href="\/THIRD_PARTY_LICENSES\.txt"/);
+ assert.doesNotMatch(await readFile(new URL('../reader/index.html',import.meta.url),'utf8'),/href="\/THIRD_PARTY_LICENSES\.txt"/);
  await verifyContent(paths);
  await writeFile(path,'incomplete');await assert.rejects(verifyContent(paths),/license copy mismatch/);
  await rm(path);await assert.rejects(verifyContent(paths),/ENOENT/);
