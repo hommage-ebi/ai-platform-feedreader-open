@@ -47,11 +47,11 @@ test('app switches historical bibliography and body together; swipe preview and 
  w.fetch=async(url,options)=>{if(options?.method==='POST'){writes.push(JSON.parse(options.body));return {ok:true,json:async()=>({ok:true})};}let data=url==='/papers.json'?[paper]:url==='/api/reading-state'?{readIds:[]}:url==='/api/article-preferences'?{starredIds:[],badIds:[]}:url.endsWith('v1.json')?{...paper.versionHistory[0],id:'a',html:'<p>Old body \\[x=1\\]</p>'}:{...paper,html:'<p>New body</p>'};return {ok:true,json:async()=>data};};
  w.eval(appCode);await tick();w.document.querySelector('.paper-open').click();await tick();
  const version=w.document.querySelector('#version');version.value='v1';version.dispatchEvent(new w.Event('change'));await tick();
- const article=w.document.querySelector('#article');assert.match(article.textContent,/Old title/);assert.match(article.textContent,/Old author/);assert.match(article.textContent,/old lead/);assert.doesNotMatch(article.textContent,/New author|new lead|New body/);assert.equal(article.querySelectorAll('.katex').length,1);
+ const article=w.document.querySelector('#article');assert.ok(article.contains(w.document.querySelector('#version-label')));assert.equal(w.document.querySelector('#version-history'),null);assert.equal(w.document.querySelector('#version-notes'),null);assert.match(article.textContent,/Old title/);assert.match(article.textContent,/Old author/);assert.match(article.textContent,/old lead/);assert.doesNotMatch(article.textContent,/New author|new lead|New body/);assert.equal(article.querySelectorAll('.katex').length,1);
  const count=writes.length, pane=w.document.querySelector('#article-pane');
  const pointer=(name,x,y)=>{const e=new w.Event(name,{bubbles:true});Object.assign(e,{pointerType:'touch',isPrimary:true,clientX:x,clientY:y});pane.dispatchEvent(e);};
  pointer('pointerdown',30,100);pointer('pointermove',190,102);assert.ok(w.document.body.classList.contains('sidebar-preview'));assert.equal(writes.length,count);pointer('pointercancel',190,102);assert.equal(w.document.body.classList.contains('sidebar-preview'),false);assert.equal(w.document.body.classList.contains('sidebar-open'),false);assert.match(article.textContent,/Old title/);assert.equal(writes.length,count);
- w.document.querySelector('#back').click();assert.match(article.textContent,/読む記事/);assert.equal(w.document.querySelector('#original').hidden,true);w.close();
+ w.document.querySelector('#back').click();assert.match(article.textContent,/気になる論文/);assert.equal(w.document.querySelector('#original').hidden,true);w.close();
 });
 test('last update uses publication status in JST and status-fetch failure does not block Reader',async()=>{
  for(const fail of [false,true]){
@@ -158,4 +158,11 @@ test('desktop hides mobile navigation and constrains each scrolling pane',async(
  for(const selector of ['#menu','#close-feeds','.article-toolbar','#article-actions'])assert.equal(w.getComputedStyle(w.document.querySelector(selector)).display,'none',selector);
  for(const selector of ['#list','#article-scroll'])assert.equal(w.getComputedStyle(w.document.querySelector(selector)).overflow,'auto',selector);
  assert.equal(w.getComputedStyle(w.document.querySelector('#article-pane')).minHeight,'0');assert.equal(w.getComputedStyle(w.document.body).overflow,'hidden');w.close();
+});
+
+test('standalone article typography and document scrolling remain independent of Reader styles',async()=>{
+ const w=windowFor('<article><div class="narrative"><h2>Heading</h2><table><tr><td>Cell</td></tr></table><blockquote>Quote</blockquote><hr></div></article>');
+ const style=w.document.createElement('style');style.textContent=await readFile(`${root}reader/reader.css`,'utf8')+'\n'+await readFile(`${root}reader/styles.css`,'utf8');w.document.head.append(style);
+ const css=selector=>w.getComputedStyle(w.document.querySelector(selector));
+ assert.equal(css('.narrative h2').fontSize,'19px');assert.equal(css('table').fontSize,'12px');assert.equal(css('td').padding,'7px 10px');assert.equal(css('blockquote').margin,'22px 0px');assert.equal(css('hr').margin,'30px 0px');assert.notEqual(css('body').overflow,'hidden');w.close();
 });

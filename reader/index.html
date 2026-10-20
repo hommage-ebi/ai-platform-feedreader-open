@@ -1,7 +1,6 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><meta name="description" content="研究論文を日本語の要約と図から読む、自分だけのフィード。"><title>ai-platform-feedreader</title></head>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>ai-platform-feedreader</title></head>
 <body>
-<a class="skip" href="#list">記事一覧へ</a>
 <div class="workspace">
 <aside id="sidebar" aria-label="フィード">
  <header class="brand-header"><a class="brand" href="/">ai-platform-<wbr>feedreader</a><button id="close-feeds" class="icon-button close-feeds mobile-only" aria-label="記事一覧に戻る">×</button></header>
@@ -15,7 +14,8 @@
 </main>
 <section id="article-pane" aria-label="選択した記事">
  <div class="article-toolbar mobile-only"><button id="back" class="back-button">‹ 一覧</button><span id="article-position"></span><div class="article-nav"><button id="previous" class="icon-button" aria-label="前の記事">‹</button><button id="next" class="icon-button" aria-label="次の記事">›</button></div></div>
- <div id="article-scroll"><article id="article"><div class="welcome"><span aria-hidden="true">▤</span><h2>読む記事を選んでください</h2><small><kbd>j</kbd> 次へ <kbd>k</kbd> 前へ</small></div></article><details id="version-history" hidden><summary>版の履歴</summary><label id="version-label">表示する版 <select id="version"></select></label><div id="version-notes"></div></details></div>
+ <div id="article-scroll"><article id="article"><div class="welcome"><p class="section-label">YOUR READING DESK</p><h2>気になる記事から。</h2><p>記事を選ぶと、本文と図をここに表示します。</p></div></article></div>
+ <div id="version-controls" hidden><label id="version-label" hidden>版 <select id="version"></select></label></div>
  <footer id="article-actions" class="mobile-only" hidden><button id="read-state" class="icon-button" aria-label="未読に戻す"><span class="read-dot"></span></button><button id="star-state" class="icon-button" aria-label="スターを付ける">☆</button><button id="bad-state" class="icon-button" aria-label="関心に合わない"></button><a id="original" class="original-link" target="_blank" rel="noopener noreferrer" aria-label="原文を別タブで開く" hidden>↗</a></footer>
 </section></div>
 <div id="notices" role="status" aria-live="polite"></div><script type="module" src="./app.js"></script></body></html>

@@ -92,7 +92,7 @@ function renderActions() {
 }
 function header(data, container, interactive = true) {
   const h = text('header', '', 'article-header'), metaLine = text('div', '', 'paper-meta-line'); metaLine.append(text('p', `${sourceLabel(data.source)} ${data.id} · ${shortDate(data.announcementDate || data.date)}`, 'article-meta'));
-  if (interactive) { const controls = text('div', '', 'inline-actions'); for (const field of ['read', 'starred', 'bad']) controls.append(control(field, store.states[data.id]?.[field], () => store.toggle(data.id, field))); metaLine.append(controls); }
+  if (interactive) { metaLine.append($('#version-label')); const controls = text('div', '', 'inline-actions'); for (const field of ['read', 'starred', 'bad']) controls.append(control(field, store.states[data.id]?.[field], () => store.toggle(data.id, field))); metaLine.append(controls); }
   h.append(metaLine); const title = text('h1', ''); title.lang = 'en'; const url = safeLink(data.source_url); if (url) { const link = text('a', data.title); link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer'; title.append(link); } else title.textContent = data.title; h.append(title);
   if (data.title_ja) h.append(text('p', data.title_ja, 'japanese-title'));
   const authors = joined(data.authors), institutions = joined(data.institution_names || data.affiliations); if (authors) h.append(text('p', authors, 'authors')); if (institutions) h.append(text('p', institutions, 'institutions')); h.append(tagsFor(data)); container.append(h);
@@ -102,13 +102,12 @@ function bindArticleAnchors() {
   $('#article').querySelectorAll('a[href^="#"]').forEach(link => { link.onclick = event => { let id; try { id = decodeURIComponent(link.hash.slice(1)); } catch { return; } const target = [...$('#article').querySelectorAll('[id]')].find(el => el.id === id); if (!target) return; event.preventDefault(); const top = target.getBoundingClientRect().top; if (compact()) window.scrollTo({ top: window.scrollY + top - $('.article-toolbar').offsetHeight - 8, behavior: 'smooth' }); else $('#article-scroll').scrollTo({ top: $('#article-scroll').scrollTop + top - $('#article-scroll').getBoundingClientRect().top - 8, behavior: 'smooth' }); }; });
 }
 async function showArticle(scroll = 0) {
-  gestures?.cancel(); const generation = ++selectionGeneration, paper = papers.find(p => p.id === selected); document.body.classList.toggle('article-open', !!paper); renderList();
+  gestures?.cancel(); $('#version-controls').append($('#version-label')); const generation = ++selectionGeneration, paper = papers.find(p => p.id === selected); document.body.classList.toggle('article-open', !!paper); renderList();
   if (!paper) {
-    renderer.cancel(); const welcome = text('div', '', 'welcome'); welcome.append(text('span', '▤'), text('h2', '読む記事を選んでください')); const hint = text('small', ''); hint.innerHTML = '<kbd>j</kbd> 次へ <kbd>k</kbd> 前へ'; welcome.append(hint); $('#article').replaceChildren(welcome); $('#version-history').hidden = true; $('#original').hidden = true; writeScroll('list', listScrollPosition); return;
+    renderer.cancel(); const welcome = text('div', '', 'welcome'); welcome.append(text('p', 'YOUR READING DESK', 'section-label'), text('h2', '気になる論文から。'), text('p', '記事を選ぶと、本文と図をここに表示します。')); $('#article').replaceChildren(welcome); $('#version-label').hidden = true; $('#original').hidden = true; writeScroll('list', listScrollPosition); return;
   }
   const versions = [...new Set([paper.version || 'current', ...(paper.versionHistory || []).map(v => v.version)].filter(Boolean).map(String))];
-  const selectBox = $('#version'); selectBox.replaceChildren(); for (const version of versions) { const option = text('option', version); option.value = version; selectBox.append(option); } selectBox.value = selectedVersion; $('#version-history').hidden = versions.length < 2;
-  $('#version-notes').replaceChildren(); for (const v of paper.versionHistory || []) { const note = text('p', `${v.version} · ${shortDate(v.date)}${v.summary_ja ? '\n' + v.summary_ja : ''}`); $('#version-notes').append(note); }
+  const selectBox = $('#version'); selectBox.replaceChildren(); for (const version of versions) { const option = text('option', version); option.value = version; selectBox.append(option); } selectBox.value = selectedVersion; $('#version-label').hidden = versions.length < 2;
   const data = versionData(paper, selectedVersion), url = safeLink(data.source_url); $('#original').hidden = !url; if (url) $('#original').href = url; else $('#original').removeAttribute('href');
   writeScroll('article', scroll);
   const body = await renderer.render($('#article'), selected, selectedVersion, header);
