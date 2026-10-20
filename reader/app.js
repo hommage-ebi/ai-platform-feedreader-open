@@ -8,7 +8,7 @@ import './styles.css';
 const $ = selector => document.querySelector(selector);
 const renderer = createArticleRenderer();
 let papers = [], store, feed = 'all', mode = 'unread', visible = [], selected = null, selectedVersion = null, ready = false;
-let feeds = [], selectionGeneration = 0, listScrollPosition = 0, articleScrollPosition = 0, query = '', sort = 'date', date = 'all', gestures;
+let feeds = [], selectionGeneration = 0, listScrollPosition = 0, articleScrollPosition = 0, query = '', gestures;
 const errors = new Map();
 const tagLabels = new Map(interestConfig.interests.map(item => [item.id, item.label]));
 const tagLabel = tag => tagLabels.get(labelValue(tag)) || labelValue(tag);
@@ -29,22 +29,16 @@ function capture() {
     if (!compact() || !articleOpen()) listScrollPosition = readScroll('list');
     if (!compact() || articleOpen()) articleScrollPosition = readScroll('article');
   }
-  return { reader: true, feed, mode, query, sort, date, ids: visible.map(p => ({ id: p.id, version: p.version })), selected, version: selectedVersion, listScroll: listScrollPosition, articleScroll: articleScrollPosition };
+  return { reader: true, feed, mode, query, ids: visible.map(p => ({ id: p.id, version: p.version })), selected, version: selectedVersion, listScroll: listScrollPosition, articleScroll: articleScrollPosition };
 }
 function savePosition() { if (ready) history.replaceState(capture(), '', location.href); }
 function writeHistory() { const url = new URL(location.href); if (selected) { url.searchParams.set('article', selected); url.searchParams.set('version', selectedVersion); } else { url.searchParams.delete('article'); url.searchParams.delete('version'); } history.pushState(capture(), '', url); }
-function paperForDate(paper) {
-  if (date === 'all' || (paper.announcementDate || paper.date) === date) return paper;
-  const history = (paper.versionHistory || []).filter(v => (v.announcementDate || v.date) === date || v.announcementDates?.includes(date)).sort((a, b) => Number(String(b.version).replace(/^v/, '')) - Number(String(a.version).replace(/^v/, '')));
-  return history.length ? { ...history[0], id: paper.id, versionHistory: paper.versionHistory } : null;
-}
 function scoped() {
   const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  const list = collection(papers, store.states, feed, 'all').map(paperForDate).filter(Boolean).filter(p => terms.every(term => [p.title, p.title_ja, p.summary_ja, p.relevance_ja, ...(Array.isArray(p.lead_ja) ? p.lead_ja : [p.lead_ja]), p.id, joined(p.authors), ...(p.tags || []).map(tagLabel)].join(' ').toLocaleLowerCase().includes(term)));
-  return sort === 'title' ? list.sort((a, b) => a.title.localeCompare(b.title, 'en')) : list;
+  return collection(papers, store.states, feed, 'all').filter(p => terms.every(term => [p.title, p.title_ja, p.summary_ja, p.relevance_ja, ...(Array.isArray(p.lead_ja) ? p.lead_ja : [p.lead_ja]), p.id, joined(p.authors), ...(p.tags || []).map(tagLabel)].join(' ').toLocaleLowerCase().includes(term)));
 }
 function snapshot() { visible = scoped().filter(p => mode !== 'unread' || !store.states[p.id]?.read); }
-function syncControls() { $('#search').value = query; $('#sort').value = sort; $('#batch-date').value = date; $('#read-filter').value = mode; }
+function syncControls() { $('#search').value = query; $('#read-filter').value = mode; }
 function renderFeeds() {
   const nav = $('#feeds'); nav.replaceChildren();
   for (const entry of feeds) {
@@ -52,7 +46,7 @@ function renderFeeds() {
     const b = text('button', '', `feed-button${saved ? ' saved-view' : ''}${entry.id === 'starred' ? ' saved-start' : ''}`); b.classList.toggle('active', active); b.setAttribute('aria-current', active ? 'page' : 'false');
     const icon = text('span', saved ? entry.id === 'starred' ? '★' : '' : 'a', saved ? 'saved-icon' : 'feed-symbol'); icon.setAttribute('aria-hidden', 'true'); if (entry.id === 'bad') icon.innerHTML = badIcon;
     const count = saved ? papers.filter(p => store.states[p.id]?.[entry.id]).length : collection(papers, store.states, entry.id, 'unread').length;
-    b.append(icon, text('span', entry.label, 'feed-name'), text('span', count, 'count')); b.onclick = () => changeCollection(entry.id, saved ? 'all' : 'unread', { query: '', date: 'all' }); nav.append(b);
+    b.append(icon, text('span', entry.label, 'feed-name'), text('span', count, 'count')); b.onclick = () => changeCollection(entry.id, saved ? 'all' : 'unread', { query: '' }); nav.append(b);
   }
 }
 function tagsFor(data) { const tags = text('div', '', 'interest-tags'); for (const tag of data.tags || []) tags.append(text('span', tagLabel(tag))); return tags; }
@@ -60,11 +54,8 @@ function control(field, active, callback) { const b = text('button', '', 'icon-b
 function renderList() {
   const scroll = !compact() || !articleOpen() ? readScroll('list') : listScrollPosition, list = $('#list'); list.replaceChildren();
   const scope = scoped(); $('#unread-count').textContent = `未読 ${scope.filter(p => !store.states[p.id]?.read).length}`;
-  $('#count').textContent = `${visible.length} / ${papers.length} 件`; $('#bulk').disabled = !scope.some(p => !store.states[p.id]?.read);
-  if (!visible.length) {
-    const empty = text('div', '', 'empty'); empty.append(text('h2', mode === 'unread' && scope.length ? '未読の記事はありません' : 'この条件の記事はありません'), text('p', '検索語や告知日を変えてみてください。'));
-    const reset = text('button', mode === 'unread' && scope.length ? 'すべての記事を表示' : '絞り込みをリセット', 'quiet-button'); reset.onclick = () => changeCollection(feed, mode === 'unread' && scope.length ? 'all' : 'unread', { query: '', date: 'all' }); empty.append(reset); list.append(empty);
-  }
+  $('#count').textContent = `${visible.length} articles`; $('#bulk').disabled = !scope.some(p => !store.states[p.id]?.read);
+  if (!visible.length) { const empty = text('div', '', 'empty'); empty.append(text('h2', mode === 'unread' ? '未読の記事はありません' : 'まだ記事はありません'), text('p', '公開された記事がここに並びます。')); list.append(empty); }
   for (const paper of visible) {
     const state = store.states[paper.id] || {}, row = text('div', '', 'paper-row'); row.dataset.id = paper.id; row.setAttribute('role', 'listitem'); row.classList.toggle('is-read', !!state.read); row.classList.toggle('selected', paper.id === selected);
     const swipe = text('div', state.read ? '未読に戻す' : '既読にする', 'swipe-label'); swipe.setAttribute('aria-hidden', 'true');
@@ -124,7 +115,7 @@ function select(id, version, { push = true, markRead = true, scroll = 0 } = {}) 
   if (push) writeHistory(); showArticle(scroll); if (markRead && !store.states[id]?.read) store.set(id, 'read', true);
 }
 function changeCollection(nextFeed = feed, nextMode = mode, patch = {}) {
-  gestures?.cancel(); savePosition(); feed = nextFeed; mode = nextMode; query = patch.query ?? query; sort = patch.sort ?? sort; date = patch.date ?? date; snapshot(); selected = null; selectedVersion = null; listScrollPosition = 0; articleScrollPosition = 0;
+  gestures?.cancel(); savePosition(); feed = nextFeed; mode = nextMode; query = patch.query ?? query; snapshot(); selected = null; selectedVersion = null; listScrollPosition = 0; articleScrollPosition = 0;
   document.body.classList.remove('sidebar-open', 'article-open'); $('#menu').setAttribute('aria-expanded', 'false'); syncControls(); renderList(); showArticle(); writeHistory();
 }
 function move(delta) { const index = visible.findIndex(p => p.id === selected), next = visible[index < 0 ? 0 : index + delta]; if (next) select(next.id, next.version); }
@@ -138,14 +129,14 @@ function action(name) {
 function openSidebar() { savePosition(); gestures?.cancel(); document.body.classList.add('sidebar-open'); $('#menu').setAttribute('aria-expanded', 'true'); if (compact()) window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); }
 function closeSidebar() { gestures?.cancel(); document.body.classList.remove('sidebar-open'); $('#menu').setAttribute('aria-expanded', 'false'); writeScroll(articleOpen() ? 'article' : 'list', articleOpen() ? articleScrollPosition : listScrollPosition); }
 function events() {
-  $('#search').oninput = event => changeCollection(feed, mode, { query: event.target.value }); $('#read-filter').onchange = event => changeCollection(feed, event.target.value); $('#sort').onchange = event => changeCollection(feed, mode, { sort: event.target.value }); $('#batch-date').onchange = event => changeCollection(feed, mode, { date: event.target.value }); $('#reset').onclick = () => changeCollection(feed, 'unread', { query: '', sort: 'date', date: 'all' });
+  $('#search').oninput = event => changeCollection(feed, mode, { query: event.target.value }); $('#read-filter').onchange = event => changeCollection(feed, event.target.value);
   $('#bulk').onclick = () => store.bulkRead(scoped().map(p => p.id)); $('#menu').onclick = openSidebar; $('#close-feeds').onclick = closeSidebar;
   $('#back').onclick = () => { gestures?.cancel(); savePosition(); selected = null; selectedVersion = null; showArticle(); writeHistory(); };
   $('#version').onchange = event => select(selected, event.target.value, { markRead: false }); $('#previous').onclick = () => move(-1); $('#next').onclick = () => move(1);
   for (const [id, field] of [['read-state', 'read'], ['star-state', 'starred'], ['bad-state', 'bad']]) $(`#${id}`).onclick = () => selected && store.toggle(selected, field);
   document.addEventListener('keydown', event => { const command = shortcut(event); if (command) { event.preventDefault(); action(command); } if (event.key === 'Escape' && document.body.classList.contains('sidebar-open')) closeSidebar(); });
   window.addEventListener('popstate', event => {
-    const state = event.state; if (!state?.reader) return; gestures?.cancel(); feed = state.feed; mode = state.mode; query = state.query || ''; sort = state.sort || 'date'; date = state.date || 'all';
+    const state = event.state; if (!state?.reader) return; gestures?.cancel(); feed = state.feed; mode = state.mode; query = state.query || '';
     visible = state.ids.map(entry => { const p = papers.find(p => p.id === (entry.id || entry)); return p && entry.version ? { ...versionData(p, entry.version), id: p.id } : p; }).filter(Boolean); selected = state.selected; selectedVersion = state.version; listScrollPosition = state.listScroll || 0; articleScrollPosition = state.articleScroll || 0;
     document.body.classList.remove('sidebar-open'); syncControls(); renderFeeds(); showArticle(articleScrollPosition);
   });
@@ -163,7 +154,6 @@ async function boot() {
       await json(field === 'read' ? '/api/reading-state' : '/api/article-preferences', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ articleId: id, operation }) }); errors.delete(`${id}:${field}`); renderList();
     }, () => { if (ready) renderList(); }, failure => { errors.set(`${failure.id}:${failure.field}`, failure); renderList(); notification('状態を保存できなかったため表示を戻しました。', failure.retry); });
     feeds = [{ id: 'all', label: 'すべての記事' }, ...[...new Set(papers.map(p => p.source).filter(Boolean))].sort().map(source => ({ id: `source:${source}`, label: sourceLabel(source) })), { id: 'starred', label: 'スター' }, { id: 'bad', label: 'bad' }];
-    const dates = [...new Set(papers.flatMap(p => [p.announcementDate || p.date, ...(p.versionHistory || []).flatMap(v => [v.announcementDate || v.date, ...(v.announcementDates || [])])]).filter(Boolean))].sort().reverse(); for (const d of dates) { const option = text('option', shortDate(d)); option.value = d; $('#batch-date').append(option); }
     snapshot(); ready = true; syncControls(); renderList();
     const latest = papers.reduce((a, p) => Date.parse(p.updated_at || p.date) > Date.parse(a || '1970-01-01') ? p.updated_at || p.date : a, null); $('#updated').textContent = `最終更新 ${formatUpdated(batch?.updated_at || data.updated_at || latest)}`;
     history.scrollRestoration = 'manual'; events(); const url = new URL(location.href), id = url.searchParams.get('article'); if (id) select(id, url.searchParams.get('version'), { push: false }); history.replaceState(capture(), '', location.href);

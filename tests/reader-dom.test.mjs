@@ -115,17 +115,16 @@ test('generic prototype-like IDs have independent saved state and absent source 
  w.close();
 });
 
-test('unread default, full-text search, sorting, announcement dates and reset compose without losing saved state',async()=>{
+test('unread default and search preserve saved state with count and bulk controls above the list',async()=>{
  const w=windowFor(html),writes=[];
- const papers=[{id:'a',source:'arxiv',title:'Zeta',title_ja:'電池材料',summary_ja:'固体の合成',date:'2026-10-19',version:'v2',tags:['synthesis-simulation'],versionHistory:[{id:'a',source:'arxiv',version:'v1',title:'Earlier Zeta',title_ja:'旧版',date:'2026-10-01'}]},{id:'b',source:'arxiv',title:'Alpha',date:'2026-10-18',version:'v1'},{id:'c',source:'Blog',title:'Read paper',date:'2026-10-20',version:'v1'}];
+ const papers=[{id:'a',source:'arxiv',title:'Zeta',title_ja:'電池材料',summary_ja:'固体の合成',date:'2026-10-19',version:'v2',tags:['synthesis-simulation']},{id:'b',source:'arxiv',title:'Alpha',date:'2026-10-18',version:'v1'},{id:'c',source:'Blog',title:'Read paper',date:'2026-10-20',version:'v1'}];
  w.fetch=async(url,options)=>{if(options?.method==='POST'){writes.push(JSON.parse(options.body));return{ok:true,json:async()=>({ok:true})};}return{ok:true,json:async()=>url==='/papers.json'?papers:url==='/api/reading-state'?{readIds:['c']}:url==='/api/article-preferences'?{starredIds:['b'],badIds:[]}:{}};};
  w.eval(appCode);await tick();const doc=w.document;
  assert.equal(doc.querySelector('#read-filter').value,'unread');assert.equal(doc.querySelectorAll('.paper-row').length,2);assert.equal(doc.querySelector('#unread-count').textContent,'未読 2');
+ assert.equal(doc.querySelector('#sort,#batch-date,#reset,.list-footer'),null);assert.ok(doc.querySelector('.list-tools #bulk'));assert.ok(doc.querySelector('.list-tools #count'));
  const search=doc.querySelector('#search');search.value='合成';search.dispatchEvent(new w.Event('input'));assert.deepEqual([...doc.querySelectorAll('.paper-id')].map(el=>el.textContent),['a']);assert.equal(doc.querySelector('.interest-tags').textContent,'合成sim');
- search.value='';search.dispatchEvent(new w.Event('input'));const sort=doc.querySelector('#sort');sort.value='title';sort.dispatchEvent(new w.Event('change'));assert.equal(doc.querySelector('.paper-id').textContent,'b');
- const date=doc.querySelector('#batch-date');date.value='2026-10-01';date.dispatchEvent(new w.Event('change'));assert.equal(doc.querySelector('.paper-open h2').textContent,'Earlier Zeta');
  doc.querySelector('#bulk').click();await tick();assert.deepEqual(writes.map(item=>item.articleId),['a']);
- doc.querySelector('#reset').click();assert.equal(search.value,'');assert.equal(sort.value,'date');assert.equal(date.value,'all');assert.equal(doc.querySelector('#read-filter').value,'unread');assert.equal(doc.querySelector('.paper-id').textContent,'b');
+ search.value='';search.dispatchEvent(new w.Event('input'));assert.equal(doc.querySelector('#read-filter').value,'unread');assert.equal(doc.querySelector('.paper-id').textContent,'b');
  const starFeed=[...doc.querySelectorAll('#feeds button')].find(b=>b.querySelector('.feed-name').textContent==='スター');assert.equal(starFeed.querySelector('.count').textContent,'1');starFeed.click();assert.equal(doc.querySelector('#read-filter').value,'all');assert.equal(doc.querySelector('.paper-id').textContent,'b');w.close();
 });
 

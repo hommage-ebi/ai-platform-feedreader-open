@@ -8,9 +8,8 @@
  <p id="updated" class="feed-updated">最終更新 —</p>
 </aside>
 <main id="list-pane" aria-label="記事一覧">
- <div class="list-tools"><div class="search-row"><button id="menu" class="icon-button mobile-only" aria-label="サイドバーを開く" aria-expanded="false">☰</button><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="タイトル・日本語要約で検索" aria-label="記事を検索"></label></div><div class="filter-row"><span id="unread-count">未読 —</span><label class="sr-only" for="read-filter">表示する記事</label><select id="read-filter"><option value="unread">未読のみ</option><option value="all">すべての記事</option></select><label class="sr-only" for="sort">並び順</label><select id="sort"><option value="date">新しい順</option><option value="title">タイトル順</option></select></div><div class="history-row"><label for="batch-date">告知日</label><select id="batch-date"><option value="all">すべての日付</option></select><button id="reset" class="quiet-button">リセット</button></div></div>
+ <div class="list-tools"><div class="search-row"><button id="menu" class="icon-button mobile-only" aria-label="サイドバーを開く" aria-expanded="false">☰</button><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="タイトル・日本語要約で検索" aria-label="記事を検索"></label><button id="bulk" class="quiet-button">一括既読</button></div><div class="filter-row"><span id="unread-count">未読 —</span><label class="sr-only" for="read-filter">表示する記事</label><select id="read-filter"><option value="unread">未読のみ</option><option value="all">すべての記事</option></select><span id="count" aria-live="polite"></span></div></div>
  <div id="list" role="list" tabindex="-1"><p class="empty">記事を読み込んでいます</p></div>
- <footer class="list-footer"><span id="count" aria-live="polite"></span><button id="bulk" class="quiet-button">すべて既読</button></footer>
 </main>
 <section id="article-pane" aria-label="選択した記事">
  <div class="article-toolbar mobile-only"><button id="back" class="back-button">‹ 一覧</button><span id="article-position"></span><div class="article-nav"><button id="previous" class="icon-button" aria-label="前の記事">‹</button><button id="next" class="icon-button" aria-label="次の記事">›</button></div></div>
