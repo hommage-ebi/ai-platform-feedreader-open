@@ -1,5 +1,5 @@
 """Fetch official RSS, validate the feed date, then append immutable candidates."""
-import datetime as dt, email.utils, re, urllib.request, xml.etree.ElementTree as ET
+import datetime as dt, email.utils, re, time, urllib.request, xml.etree.ElementTree as ET
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from pipeline.shared.runtime import digest, lock, now, read, record, write
@@ -7,10 +7,13 @@ from .common import identity, recompute_completion, today, validate_candidates
 from .policy import run_policy,bind_papers
 from .inputs import compact,remember,input_hash
 
+FEED_URL_RE=re.compile(r'https://rss\.arxiv\.org/rss/[A-Za-z0-9.-]+\Z')
+REQUEST_URL_RE=re.compile(r'https://rss\.arxiv\.org/rss/[A-Za-z0-9.-]+(?:\?_fetch=\d+)?\Z')
+
 def fetch(url):
-    if not url.startswith('https://rss.arxiv.org/rss/'): raise ValueError('Only official arXiv RSS allowed')
+    if not REQUEST_URL_RE.fullmatch(url): raise ValueError('Only official arXiv RSS allowed')
     with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'ai-platform-feedreader/1.0'}),timeout=45) as r:
-        if not r.geturl().startswith('https://rss.arxiv.org/rss/'):raise ValueError('RSS redirected outside official source')
+        if r.geturl()!=url:raise ValueError('RSS redirected away from requested feed/cache key')
         return r.read()
 
 def parse(data,target_date):
@@ -42,17 +45,43 @@ def parse(data,target_date):
         rows.append({'id':match.group(1),'version':version,'title':title,'abstract':abstract,'date':target_date,'source_url':f'https://arxiv.org/abs/{match.group(1)}{version}'})
     return validate_candidates(rows)
 
-def collect(run,target_date,feeds=None,fetcher=fetch):
+def cached_feed(run,target_date,url,fetcher,refresh_rss):
+    """Reuse this run's validated RSS; refresh never replaces it with a bad response."""
+    archive=Path(run)/'.cache/feeds'/target_date/(url.rsplit('/',1)[1]+'.xml')
+    stamp=archive.with_suffix('.metadata.json')
+    with lock(archive.with_suffix('.lock')):
+        cached=archive.exists() and not refresh_rss
+        if cached:
+            data=archive.read_bytes();metadata=read(stamp,{})
+            if (not isinstance(metadata,dict) or metadata.get('schema_version')!=1
+                or metadata.get('target_date')!=target_date or metadata.get('url')!=url
+                or metadata.get('sha256')!=digest(data) or metadata.get('byte_size')!=len(data)
+                or not isinstance(metadata.get('retrieved_at'),str)
+                or not isinstance(metadata.get('request_url'),str)
+                or not re.fullmatch(re.escape(url)+r'\?_fetch=\d+',metadata['request_url'])):
+                raise ValueError('Cached RSS metadata/hash mismatch; use --refresh-rss to refetch')
+            rows=parse(data,target_date)
+        else:
+            fetch_url=f'{url}?_fetch={time.time_ns()}'
+            data=fetcher(fetch_url);rows=parse(data,target_date)
+            metadata={'schema_version':1,'target_date':target_date,'url':url,'request_url':fetch_url,
+                      'sha256':digest(data),'byte_size':len(data),'retrieved_at':now()}
+            # Parse and date-check before touching a previous verified archive.
+            archive.write_bytes(data);write(stamp,metadata)
+    return rows,{'url':url,'status':'verified','count':len(rows),'retrieved_at':metadata['retrieved_at'],
+                 'request_url':metadata['request_url'],'cached':cached,'sha256':metadata['sha256']}
+
+def collect(run,target_date,feeds=None,fetcher=fetch,refresh_rss=False):
     run=Path(run); ledger=read(run/'ledger.json',{})
+    if not isinstance(target_date,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',target_date) or dt.date.fromisoformat(target_date).isoformat()!=target_date:raise ValueError('Invalid RSS target date')
     if target_date!=ledger.get('today_at_start',today()) or target_date!=ledger.get('target_date',target_date):raise ValueError('Cannot replace historical candidates with current RSS')
     policy=run_policy(run)
     required=list(feeds) if feeds is not None else ['https://rss.arxiv.org/rss/'+category for category in policy['sources']['categories']]
-    if not required or any(not isinstance(url,str) or not re.fullmatch(r'https://rss\.arxiv\.org/rss/[A-Za-z0-9.-]+',url) for url in required):raise ValueError('Invalid official RSS feed scope')
+    if not required or any(not isinstance(url,str) or not FEED_URL_RE.fullmatch(url) for url in required):raise ValueError('Invalid official RSS feed scope')
     successes=[];errors=[];attempts=[];verified={}
     for url in required:
         try:
-            rows=parse(fetcher(url),target_date);successes.extend(rows)
-            attempt={'url':url,'status':'verified','count':len(rows),'retrieved_at':now()}
+            rows,attempt=cached_feed(run,target_date,url,fetcher,refresh_rss);successes.extend(rows)
             attempts.append(attempt);verified[url]=attempt
         except Exception as exc:errors.append({'url':url,'error':str(exc)});attempts.append({'url':url,'status':'failed','retrieved_at':now()})
     conflicts=[]
@@ -82,7 +111,7 @@ def collect(run,target_date,feeds=None,fetcher=fetch):
         capture={'schema_version':1,'target_date':target_date,'candidates_sha256':digest(rows),'required_feeds':required,'scope':list(covered.values())}
         write(run/'run/collection-capture.json',capture)
     errors.extend(conflicts)
-    details={'target_date':target_date,'scope':attempts,'errors':errors,'candidate_count':len(merged),'new_count':len(merged)-len(old)}
+    details={'target_date':target_date,'refresh_rss':refresh_rss,'scope':attempts,'errors':errors,'candidate_count':len(merged),'new_count':len(merged)-len(old)}
     record(run,'collect_attempt','failed' if errors else 'complete',details)
     missing=[url for url in required if url not in covered]
     complete=not missing and not conflicts

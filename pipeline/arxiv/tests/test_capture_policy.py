@@ -21,12 +21,12 @@ class CapturePolicy(unittest.TestCase):
         config=self.root/'pipeline/arxiv/config/sources.json';write(config,{'schema_version':1,'categories':['astro-ph','cs.AI']})
         seen=[]
         collect(self.run,'2026-10-18',fetcher=lambda url:(seen.append(url) or self.f.rss()))
-        self.assertEqual(seen,['https://rss.arxiv.org/rss/astro-ph','https://rss.arxiv.org/rss/cs.AI'])
+        self.assertEqual([u.split('?',1)[0] for u in seen],['https://rss.arxiv.org/rss/astro-ph','https://rss.arxiv.org/rss/cs.AI'])
         write(config,{'schema_version':1,'categories':['math']});seen.clear()
         collect(self.run,'2026-10-18',fetcher=lambda url:(seen.append(url) or self.f.rss()))
-        self.assertEqual(len(seen),2)
+        self.assertEqual(seen,[])
         other=self.new_run();seen.clear();collect(other,'2026-10-18',fetcher=lambda url:(seen.append(url) or self.f.rss()))
-        self.assertEqual(seen,['https://rss.arxiv.org/rss/math'])
+        self.assertEqual([u.split('?',1)[0] for u in seen],['https://rss.arxiv.org/rss/math'])
     def test_invalid_sources_block_new_capture_before_network_not_old_run(self):
         run_policy(self.run);config=self.root/'pipeline/arxiv/config/sources.json'
         for categories in ([],['cs.LG','cs.LG'],['../private'],['https://example.com'],[True]):

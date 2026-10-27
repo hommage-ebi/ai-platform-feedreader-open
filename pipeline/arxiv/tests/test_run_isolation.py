@@ -69,11 +69,11 @@ class RunIsolation(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'reconciliation'):release(self.root,task['cache_key'],token)
     def test_saved_empty_capture_survives_refetch_failure_and_next_day(self):
         collect(self.run,'2026-10-18',fetcher=lambda _:self.f.rss())
-        collect(self.run,'2026-10-18',fetcher=lambda _:(_ for _ in ()).throw(OSError('Network down')))
+        collect(self.run,'2026-10-18',fetcher=lambda _:(_ for _ in ()).throw(OSError('Network down')),refresh_rss=True)
         ledger=read(self.run/'ledger.json');self.assertEqual(ledger['stages']['collect_attempt']['status'],'failed')
         self.assertEqual(ledger['stages']['collect']['status'],'complete');self.assertEqual(ledger['status'],'complete');self.assertEqual(ledger['pending'],[])
         rss=self.f.rss(date='Mon, 19 Oct 2026 03:00:00 GMT')
-        with patch('pipeline.arxiv.collect.collect',side_effect=lambda run,date:collect(run,date,fetcher=lambda _:rss)):
+        with patch('pipeline.arxiv.collect.collect',side_effect=lambda run,date,**kwargs:collect(run,date,fetcher=lambda _:rss,**kwargs)):
             plan=start(self.root,dt.datetime.fromisoformat('2026-10-19T03:00:00+00:00'))
         self.assertEqual(plan['backlog'],[])
     def test_first_failed_capture_has_actionable_collect_pending(self):
@@ -82,27 +82,27 @@ class RunIsolation(unittest.TestCase):
         self.assertEqual([x['stage'] for x in ledger['pending']],['collect'])
     def test_partial_feed_coverage_is_not_fabricated(self):
         def partial(url):
-            if url==self.feeds[0]:return self.f.rss()
+            if url.split('?',1)[0]==self.feeds[0]:return self.f.rss()
             raise OSError('Unavailable')
         collect(self.run,'2026-10-18',fetcher=partial)
         self.assertEqual(read(self.run/'ledger.json')['status'],'incomplete')
         def remaining(url):
-            if url!=self.feeds[0]:return self.f.rss()
+            if url.split('?',1)[0]!=self.feeds[0]:return self.f.rss()
             raise OSError('Previously captured feed unavailable')
         collect(self.run,'2026-10-18',fetcher=remaining)
         self.assertEqual(read(self.run/'ledger.json')['status'],'complete')
-        self.assertEqual(read(self.run/'ledger.json')['stages']['collect_attempt']['status'],'failed')
+        self.assertEqual(read(self.run/'ledger.json')['stages']['collect_attempt']['status'],'complete')
     def test_changed_saved_candidates_invalidate_prior_coverage(self):
         collect(self.run,'2026-10-18',fetcher=lambda _:self.f.rss())
         write(self.run/'run/candidates.json',[PAPER]);self.f.classify([PAPER],'exclude')
-        collect(self.run,'2026-10-18',fetcher=lambda _:(_ for _ in ()).throw(OSError('Network down')))
+        collect(self.run,'2026-10-18',fetcher=lambda _:(_ for _ in ()).throw(OSError('Network down')),refresh_rss=True)
         self.assertEqual(read(self.run/'ledger.json')['status'],'incomplete')
     def test_input_conflict_is_not_hidden_by_retained_capture(self):
         def item(title):return '<item><title>'+title+'</title><link>https://arxiv.org/abs/2610.12345v1</link><description>Abstract</description></item>'
         collect(self.run,'2026-10-18',fetcher=lambda _:self.f.rss(item('Original')))
-        collect(self.run,'2026-10-18',fetcher=lambda _:self.f.rss(item('Conflicting')))
+        collect(self.run,'2026-10-18',fetcher=lambda _:self.f.rss(item('Conflicting')),refresh_rss=True)
         self.assertEqual(read(self.run/'ledger.json')['stages']['collect']['status'],'failed')
-        collect(self.run,'2026-10-18',fetcher=lambda _:(_ for _ in ()).throw(OSError('Network down')))
+        collect(self.run,'2026-10-18',fetcher=lambda _:(_ for _ in ()).throw(OSError('Network down')),refresh_rss=True)
         self.assertEqual(read(self.run/'ledger.json')['stages']['collect']['status'],'failed')
 
 if __name__=='__main__':unittest.main()

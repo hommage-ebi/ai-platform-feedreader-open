@@ -123,10 +123,12 @@ cd "$RUN_DIR"
 
 当日分の公式RSSからID・版・title・abstractを収集する。候補の永続一覧にはID・版・日付・原論文URL・入力ハッシュだけを保存し、title・abstractは分類用の一時キャッシュに保持する。取得日時・収集範囲・日付の検証結果も残す。RSSは更新されるため、過去分の再開や分類・解説より先に取得・保存する。同日実行の保存済み候補へ追加・重複排除し、空のRSSで既存候補や処理済み状態を消さない。取得失敗・日付不一致・不正な入力は「新着なし」と区別して記録する。
 
-`start` が当日収集を試みた後は `split` へ進む。当日RSSを再試行する場合だけ下の `collect` を同じ `STARTED_AT` で実行する。過去分では保存済み候補を使い、現在のRSSで過去の収集結果を作り直さない。未分類候補の一時入力がcloneやキャッシュ削除で失われた場合は、元のtitle・abstractを入力ハッシュに照合して復元するまで分類を止める。分類済み候補の採否・状態確認・記事化には一時入力は不要。有効な未分類候補を、保存された処理設定と並列上限に従ってグループに分ける。候補が0件の場合は分類モデルを起動しない。当日分・過去分の分類と解説を合わせた同時起動数を制限する。
+新規のネットワーク取得では毎回 `https://rss.arxiv.org/rss/<category>?_fetch=<time.time_ns()>` を使い、配信キャッシュで古いRSSを返されることを避ける。取得したXMLと取得URL・時刻・ハッシュはrun内の `.cache/feeds/<date>/<category>.xml` と `.metadata.json` に保存し、同じrunの通常の再開では保存済みRSSを再利用する。キャッシュも対象日・カテゴリ・内容を照合する。これらの一時ファイルはGit管理しない。
 
-    # 当日収集の再試行が必要な場合のみ
-    uv run --project "$PROJECT_ROOT/pipeline" --locked --no-sync python "$PROJECT_ROOT/pipeline/arxiv/workflow.py" collect --date "$TARGET_DATE" --timezone Asia/Tokyo --started-at "$STARTED_AT"
+`start` が当日収集を試みた後は `split` へ進む。保存済みRSSを使わず当日分を取り直す場合は `start` または `collect` に `--refresh-rss` を付ける。下の `collect` は同じ `STARTED_AT` で実行する。取得・XML・日付の検証に失敗した応答はキャッシュへ保存せず、以前の正常なRSSと候補を残して再取得の失敗を報告する。過去分では保存済み候補を使い、現在のRSSで過去の収集結果を作り直さない。未分類候補の一時入力が失われても保存済みRSSが残っていれば、`--refresh-rss` を付けない `collect` で復元できる。RSSも失われた場合は元のtitle・abstractを入力ハッシュに照合して復元するまで分類を止める。分類済み候補の採否・状態確認・記事化には一時入力は不要。有効な未分類候補を、保存された処理設定と並列上限に従ってグループに分ける。候補が0件の場合は分類モデルを起動しない。当日分・過去分の分類と解説を合わせた同時起動数を制限する。
+
+    # 保存済みRSSも使わず、当日収集をやり直す場合
+    uv run --project "$PROJECT_ROOT/pipeline" --locked --no-sync python "$PROJECT_ROOT/pipeline/arxiv/workflow.py" collect --date "$TARGET_DATE" --timezone Asia/Tokyo --started-at "$STARTED_AT" --refresh-rss
 
 分類タスクは各実行フォルダで作る。以下の工程では実行フォルダを作業ディレクトリにするため、CLIの絶対パスを指定する。リポジトリのルートでは `python -m pipeline.arxiv.workflow`、`python -m pipeline.arxiv.reader_adapter` でも起動できる。
 
@@ -222,6 +224,7 @@ python -m pipeline.arxiv.link_html_images --project-root /path/to/project --run 
 - `run/policies/<sha256>.json`：他runから引き継いだ設定をハッシュごとに1回保存する。run共通設定の再コピーはしない
 - `run/collection-capture.json`：対象日、検証済みfeed範囲、必要feed、保存候補のSHA-256。候補とともにGitへ保持し、clone・再開後も取得済み範囲を判定する
 - `run/`：候補・採用一覧はID・版・日付・URL・入力ハッシュと分類結果だけを保存し、title・abstractは含めない。`run/papers/<id>/<version>/` では `source.json`・`metadata.json` と、検証済みの `result.json`・`summary.md` を保存する。原資料URL・ハッシュ・検証結果を残し、原資料の本文や画像実体は記録へ埋め込まない
+- `.cache/feeds/<date>/`：カテゴリごとの検証済みRSSと取得メタデータ。同じrunの再開では再利用し、`--refresh-rss` 指定時に取り直す。Gitへ保存せず、`cleanup`でも再開用に保持する
 - `.cache/classification-inputs.json` と `.cache/groups/`：分類に必要なtitle・abstractと分割入力・途中結果。Gitへ保存しない。`run/groups/*.json` に候補のコピーは作らない
 - `site/`：検証済み記事の中間出力。アダプターが `data/articles/` へ追加した後に再生成できるコピーで、Git管理しない。`run/` 内の生成タスクJSONと、論文フォルダ内の原HTML・PDF・全文抽出テキスト・途中の図もGit管理せず、利用後に片付ける
 

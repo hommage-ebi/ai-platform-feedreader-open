@@ -52,8 +52,8 @@ class PipelineTests(unittest.TestCase):
     def test_collect_append_empty_and_failure_preserve(self):
         item='<item><title>Materials study</title><link>https://arxiv.org/abs/2610.12345</link><description>arXiv:2610.12345v1 Announce Type: new Abstract: Machine learned potential</description></item>'
         collect(self.run,'2026-10-18',fetcher=lambda u:self.rss(item));self.assertEqual(len(read(self.run/'run/candidates.json')),1)
-        collect(self.run,'2026-10-18',fetcher=lambda u:self.rss());self.assertEqual(len(read(self.run/'run/candidates.json')),1)
-        collect(self.run,'2026-10-18',fetcher=lambda u:self.rss(date='Sat, 17 Oct 2026 03:00:00 GMT'))
+        collect(self.run,'2026-10-18',fetcher=lambda u:self.rss(),refresh_rss=True);self.assertEqual(len(read(self.run/'run/candidates.json')),1)
+        collect(self.run,'2026-10-18',fetcher=lambda u:self.rss(date='Sat, 17 Oct 2026 03:00:00 GMT'),refresh_rss=True)
         self.assertEqual(read(self.run/'ledger.json')['stages']['collect_attempt']['status'],'failed');self.assertEqual(read(self.run/'ledger.json')['stages']['collect']['status'],'complete');self.assertEqual(len(read(self.run/'run/candidates.json')),1)
     def test_no_guess_missing_version(self):
         with self.assertRaises(ValueError):parse(self.rss('<item><link>https://arxiv.org/abs/2610.12345</link><title>T</title><description>A</description></item>'),'2026-10-18')
@@ -189,7 +189,7 @@ class PipelineTests(unittest.TestCase):
     def test_start_freezes_jst_and_collects_before_backlog(self):
         from pipeline.arxiv.workflow import start
         write(self.run/'run/candidates.json',[PAPER])
-        def collector(run,date):
+        def collector(run,date,**kwargs):
             self.assertEqual(date,'2026-10-19');record(run,'collect','failed',{'reason':'fixture network failure'})
         with patch('pipeline.arxiv.collect.collect',side_effect=collector) as call:
             plan=start(self.root,dt.datetime(2026,10,18,18,0,tzinfo=dt.timezone.utc));call.assert_called_once()
@@ -268,7 +268,7 @@ class PipelineTests(unittest.TestCase):
     def test_cli_frozen_invocation_survives_midnight(self):
         from pipeline.arxiv import workflow;import contextlib
         run=self.root/'data/runs/2026-10-18/midnight'
-        def collector(path,date):
+        def collector(path,date,**kwargs):
             ledger=read(path/'ledger.json');self.assertEqual(ledger['today_at_start'],'2026-10-18');self.assertEqual(date,'2026-10-18');record(path,'collect','complete');return []
         argv=['workflow.py','collect','--run-dir',str(run),'--date','2026-10-18','--started-at','2026-10-18T23:59:59+0900']
         with patch.object(sys,'argv',argv),patch('pipeline.arxiv.collect.collect',side_effect=collector),contextlib.redirect_stdout(io.StringIO()):workflow.cli()
