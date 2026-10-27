@@ -35,7 +35,7 @@ function savePosition() { if (ready) history.replaceState(capture(), '', locatio
 function writeHistory() { const url = new URL(location.href); if (selected) { url.searchParams.set('article', selected); url.searchParams.set('version', selectedVersion); } else { url.searchParams.delete('article'); url.searchParams.delete('version'); } history.pushState(capture(), '', url); }
 function scoped() {
   const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  return collection(papers, store.states, feed, 'all').filter(p => terms.every(term => [p.title, p.title_ja, p.summary_ja, p.relevance_ja, ...(Array.isArray(p.lead_ja) ? p.lead_ja : [p.lead_ja]), p.id, joined(p.authors), ...(p.tags || []).map(tagLabel)].join(' ').toLocaleLowerCase().includes(term)));
+  return collection(papers, store.states, feed, 'all').filter(p => terms.every(term => [p.title, p.title_ja, p.relevance_ja, ...(Array.isArray(p.lead_ja) ? p.lead_ja : [p.lead_ja]), p.id, joined(p.authors), ...(p.tags || []).map(tagLabel)].join(' ').toLocaleLowerCase().includes(term)));
 }
 function snapshot() { visible = scoped().filter(p => mode !== 'unread' || !store.states[p.id]?.read); }
 function syncControls() { $('#search').value = query; $('#read-filter').value = mode; }

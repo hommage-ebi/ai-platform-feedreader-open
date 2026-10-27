@@ -94,6 +94,8 @@ def cli():
             result=assemble(run)
         elif args.stage=='cleanup':
             from .prepare import cleanup
+            from .inputs import cleanup_inputs
+            cleanup_inputs(run)
             completed=read(run/'site/papers.json',[])
             for paper in completed:cleanup(paper_path(run,paper))
             for name in ('classifier_tasks.json','summary_tasks.json'):(run/'run'/name).unlink(missing_ok=True)

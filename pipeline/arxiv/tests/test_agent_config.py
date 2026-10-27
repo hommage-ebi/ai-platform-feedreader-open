@@ -47,7 +47,7 @@ class AgentConfig(unittest.TestCase):
         self.assertEqual((summary['model'],summary['reasoning_effort']),('gpt-6-sol','medium'))
         self.config['summary']={'model':'gpt-6.1-sol','reasoning_effort':'high'};self.save()
         directory=paper_path(self.run,paper)
-        write(directory/'result.json',{'id':paper['id'],'version':paper['version'],'title_ja':'検証','summary_ja':'合成した検証','lead_ja':['問い','方法','結果'],'source_url':paper['source_url'],'summary_file':'summary.md','figures':[]})
+        write(directory/'result.json',{'id':paper['id'],'version':paper['version'],'title_ja':'検証','lead_ja':['問い','方法','結果'],'source_url':paper['source_url'],'summary_file':'summary.md','figures':[]})
         (directory/'summary.md').write_text('## 検証\n\n合成した説明です。')
         finish(self.root,summary,token)
         self.assertEqual(make_tasks(self.run,'summary'),[])

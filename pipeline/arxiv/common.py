@@ -27,7 +27,8 @@ def validate_candidates(rows):
         key=identity(p)
         if key in seen: raise ValueError('Duplicate ID/version')
         seen.add(key)
-        if any(not isinstance(p.get(x),str) or not p[x].strip() for x in ['title','abstract']): raise ValueError('Missing title/abstract')
+        from .inputs import input_hash
+        input_hash(p)
     return rows
 
 def protected_versions(run):
