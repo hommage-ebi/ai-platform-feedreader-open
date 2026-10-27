@@ -12,7 +12,7 @@ if __package__ in (None, ''):
 from pipeline.shared.runtime import lock, now, project_root, read, record, write
 from .common import identity, paper_path, recompute_completion
 
-def start(root,started_at=None):
+def start(root,started_at=None,refresh_rss=False):
     root=Path(root).resolve();started_at=started_at or dt.datetime.now(dt.timezone.utc)
     if started_at.tzinfo is None:raise ValueError('Invocation timestamp must include timezone')
     date=started_at.astimezone(ZoneInfo('Asia/Tokyo')).date().isoformat();base=root/'data/runs'
@@ -31,7 +31,7 @@ def start(root,started_at=None):
             # Never let historical corruption prevent capturing today's expiring RSS.
             try:
                 from .collect import collect
-                collect(run,date)
+                collect(run,date,refresh_rss=refresh_rss)
             except Exception as exc:record(run,'collect','failed',{'error':str(exc)})
             historical=[]
             for file in previous:
@@ -57,7 +57,8 @@ def start(root,started_at=None):
     return {'today':str(run),'today_collection':read(run/'ledger.json').get('stages',{}).get('collect',{'status':'not_attempted'}),'today_collection_attempt':read(run/'ledger.json').get('stages',{}).get('collect_attempt',{'status':'not_attempted'}),'backlog':historical}
 
 def cli():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('stage',choices=['start','collect','split','classify_tasks','merge','prepare','summary_tasks','assemble','claim','finish','release','cleanup','status']);parser.add_argument('--date');parser.add_argument('--started-at',help='Invocation start ISO timestamp with timezone, frozen before bootstrap');parser.add_argument('--timezone',default='Asia/Tokyo');parser.add_argument('--run-dir',default='.');parser.add_argument('--project-root');parser.add_argument('--task-file');parser.add_argument('--task-index',type=int,default=0);parser.add_argument('--owner');parser.add_argument('--token');args=parser.parse_args();run=Path(args.run_dir).resolve()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('stage',choices=['start','collect','split','classify_tasks','merge','prepare','summary_tasks','assemble','claim','finish','release','cleanup','status']);parser.add_argument('--date');parser.add_argument('--started-at',help='Invocation start ISO timestamp with timezone, frozen before bootstrap');parser.add_argument('--timezone',default='Asia/Tokyo');parser.add_argument('--run-dir',default='.');parser.add_argument('--project-root');parser.add_argument('--task-file');parser.add_argument('--task-index',type=int,default=0);parser.add_argument('--owner');parser.add_argument('--token');parser.add_argument('--refresh-rss',action='store_true',help='Refetch RSS with a new cache-busting URL instead of reusing saved feeds (start/collect only)');args=parser.parse_args();run=Path(args.run_dir).resolve()
+    if args.refresh_rss and args.stage not in ('start','collect'):parser.error('--refresh-rss is only supported for start and collect')
     if args.project_root:os.environ['PROJECT_ROOT']=str(Path(args.project_root).resolve())
     if args.timezone!='Asia/Tokyo':parser.error('Only Asia/Tokyo is supported')
     started_at=dt.datetime.fromisoformat(args.started_at.replace('Z','+00:00')) if args.started_at else dt.datetime.now(dt.timezone.utc)
@@ -65,7 +66,7 @@ def cli():
     invocation_date=started_at.astimezone(ZoneInfo('Asia/Tokyo')).date().isoformat()
     if args.stage=='start':
         if args.date and args.date!=invocation_date:parser.error('--date must match the invocation start date in Asia/Tokyo')
-        print(json.dumps(start(project_root(run),started_at),ensure_ascii=False,indent=2));return
+        print(json.dumps(start(project_root(run),started_at,refresh_rss=args.refresh_rss),ensure_ascii=False,indent=2));return
     run.mkdir(parents=True,exist_ok=True)
     with lock(run/'.run.lock',blocking=False):
         if not (run/'ledger.json').exists():
@@ -79,7 +80,7 @@ def cli():
             result={'status':status,'pending':read(run/'ledger.json').get('pending',[])}
         elif args.stage=='collect':
             from .collect import collect
-            result=collect(run,args.date or read(run/'ledger.json')['target_date'])
+            result=collect(run,args.date or read(run/'ledger.json')['target_date'],refresh_rss=args.refresh_rss)
         elif args.stage in ('split','merge'):
             from . import split_merge
             result=getattr(split_merge,args.stage)(run)

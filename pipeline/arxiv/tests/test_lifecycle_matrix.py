@@ -21,7 +21,7 @@ class Lifecycle(unittest.TestCase):
  def invoke(self,day='2026-10-19',items=''):
   date=dt.datetime.fromisoformat(day+'T01:00:00+00:00');rss=f'<rss><channel><lastBuildDate>{date.strftime("%a, %d %b %Y %H:%M:%S GMT")}</lastBuildDate>{items}</channel></rss>'.encode()
   calls=[]
-  def capture(run,target):calls.append(target);return collect(run,target,fetcher=lambda url:rss)
+  def capture(run,target,**kwargs):calls.append(target);return collect(run,target,fetcher=lambda url:rss,**kwargs)
   with patch('pipeline.arxiv.collect.collect',side_effect=capture):plan=start(self.root,date)
   self.assertEqual(calls,[day]);return plan
  def test_fresh_today_empty_is_real_empty(self):

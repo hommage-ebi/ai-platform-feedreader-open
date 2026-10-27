@@ -206,7 +206,7 @@ class ImportLifecycle(unittest.TestCase):
         finally:
             process.stdin.close();process.wait();process.stdout.close()
         self.assertEqual(self.adapt()['failures'],[])
-        with patch('pipeline.arxiv.collect.collect',side_effect=lambda run,date:collect(run,date,fetcher=lambda _:self.f.rss())):
+        with patch('pipeline.arxiv.collect.collect',side_effect=lambda run,date,**kwargs:collect(run,date,fetcher=lambda _:self.f.rss(),**kwargs)):
             self.assertEqual(Path(start(self.root,dt.datetime.fromisoformat('2026-10-18T01:00:00+00:00'))['today']),self.run)
 
 if __name__=='__main__':unittest.main()
