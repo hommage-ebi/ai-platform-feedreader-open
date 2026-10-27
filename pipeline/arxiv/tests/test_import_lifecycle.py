@@ -53,7 +53,7 @@ class ImportLifecycle(unittest.TestCase):
                     value=read(mapping);key='/'.join(identity(PAPER))
                     if mutation=='missing_entry':del value[key]
                     elif mutation=='changed_input':value[key]['input_sha256']='0'*64
-                    else:value[key]['policy']['summary']+=' unauthorized edit'
+                    else:value[key]['policy_sha256']='0'*64
                     write(mapping,value)
                 with self.assertRaises(ValueError):self.adapt()
                 self.assertEqual({str(p.relative_to(self.dest)):p.read_bytes() for p in self.dest.rglob('*') if p.is_file()},before)

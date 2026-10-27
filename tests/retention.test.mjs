@@ -114,7 +114,7 @@ test('frozen run policy and paper mapping survive config changes, commit and fre
  frozen.sha256=createHash('sha256').update(JSON.stringify(sorted(frozen))).digest('hex');
  const records={
   [`${run}/processing-policy.json`]:frozen,
-  [`${run}/paper-policies.json`]:{'synthetic-paper/v1':{input_sha256:'0'.repeat(64),policy:frozen}},
+  [`${run}/paper-policies.json`]:{'synthetic-paper/v1':{input_sha256:'0'.repeat(64),policy_sha256:frozen.sha256}},
  };
  for(const [path,record] of Object.entries(records))await stage(path,JSON.stringify(record));
  await stage('pipeline/arxiv/config/sources.json',JSON.stringify(frozen.sources));
@@ -137,4 +137,28 @@ test('staged policy records remain subject to credential scanning after clean wo
   assert.throws(()=>checkRetention({cwd}),/Possible credential/);
   git('add','--',path);git('rm','--cached','--',path);
  }
+}));
+
+test('verbose candidates and embedded paper policies cannot be staged',()=>fixture(async({cwd,stage,git})=>{
+ const run='data/runs/2026-10-19/run-id/run';await mkdir(join(cwd,run),{recursive:true});
+ for(const name of ['candidates','selected']) {
+  const path=`${run}/${name}.json`;
+  await stage(path,JSON.stringify([{id:'synthetic',version:'v1',title:'Synthetic title',abstract:'Synthetic abstract'}]));
+  assert.throws(()=>checkRetention({cwd}),/Verbose candidate record/);
+  await stage(path,JSON.stringify([{id:'synthetic',version:'v1',input_sha256:'0'.repeat(64)}]));
+  assert.doesNotThrow(()=>checkRetention({cwd}));git('rm','--cached','--',path);
+ }
+ const path=`${run}/paper-policies.json`;
+ await stage(path,JSON.stringify({synthetic:{input_sha256:'0'.repeat(64),policy:{summary:'Repeated prompt'}}}));
+ assert.throws(()=>checkRetention({cwd}),/Embedded per-paper policy/);
+}));
+test('temporary group inputs are ignored while distinct policy snapshots can be staged',()=>fixture(async({git,stage,cwd})=>{
+ await stage('.gitignore',await readFile(new URL('../.gitignore',import.meta.url),'utf8'));
+ const run='data/runs/2026-10-19/run-id';
+ for(const path of [`${run}/run/groups/verbose.json`,`${run}/.cache/groups/input.json`,`${run}/.cache/classification-inputs.json`]) {
+  assert.equal(allowedTrackedPath(path),false);assert.ok(git('check-ignore','--',path).trim());
+ }
+ const snapshot=`${run}/run/policies/${'0'.repeat(64)}.json`;
+ assert.equal(allowedTrackedPath(snapshot),true);await mkdir(join(cwd,run,'run/policies'),{recursive:true});
+ await stage(snapshot,'{}');assert.doesNotThrow(()=>checkRetention({cwd}));
 }));

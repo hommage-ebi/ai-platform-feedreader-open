@@ -8,6 +8,7 @@ import shutil, uuid
 from pathlib import Path
 from pipeline.shared.runtime import digest, lock, now, project_root, read, record, write
 from .common import identity, paper_path, validate_candidates
+from .inputs import input_hash
 from .policy import run_policy,relevance_template,expand_prompt,summary_template,agent_settings
 from pipeline.shared.agents import load_agents
 
@@ -133,14 +134,14 @@ def validate_task_inputs(root,task,finishing=False):
         files=task.get('input_files')
         if not isinstance(files,list) or len(files)!=1:raise ValueError('Invalid classification input paths')
         item=Path(files[0]).resolve()
-        if item.parent!=run/'run/groups':raise ValueError('Classification input is not in canonical group directory')
+        if item.parent!=run/'.cache/groups':raise ValueError('Classification input is not in canonical group directory')
         rows=validate_candidates(read(item));settings=agent_settings(run,rows[0],kind);model=settings['model'];effort=settings['reasoning_effort'];template=relevance_template(run,rows);fingerprint=[{k:p[k] for k in ('id','version','title','abstract')} for p in rows]
         key=digest({'kind':kind,'input':fingerprint,'prompt':template,'model':model,'reasoning_effort':effort})
         if key!=task.get('cache_key'):raise ValueError('Model task inputs or prompt changed; regenerate task')
-        canonical=run/'run/groups'/(digest({'papers':rows,'prompt_hash':digest(template.encode())})+'.json')
+        canonical=run/'.cache/groups'/(digest({'papers':rows,'prompt_hash':digest(template.encode())})+'.json')
         if item!=canonical or str(item.relative_to(run)) not in read(run/'run/groups.json',[]):raise ValueError('Classification group path changed')
         candidates={identity(p):p for p in validate_candidates(read(run/'run/candidates.json',[]))}
-        if any(identity(p) not in candidates or any(p[k]!=candidates[identity(p)][k] for k in ('title','abstract')) for p in rows):raise ValueError('Classification group no longer matches current candidates')
+        if any(identity(p) not in candidates or input_hash(p)!=input_hash(candidates[identity(p)]) for p in rows):raise ValueError('Classification group no longer matches current candidates')
         inputs=[item];outputs=[item.with_name(item.stem+'.result.json')]
         expanded=expand_prompt(run,rows,item,outputs[0])
     else:

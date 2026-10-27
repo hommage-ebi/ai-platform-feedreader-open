@@ -108,7 +108,7 @@ class RealArxivTest(unittest.TestCase):
         self.assertFalse((directory/'figures.json').exists())
         self.assertFalse((directory/'figures').exists())
         figures = self.selected_outputs(source)
-        write(directory/'result.json', {'id':self.paper['id'], 'version':'v1', 'title_ja':'実資料の決定論的な試験', 'summary_ja':'図の参照と保存経路を検証するための人工的な試験出力', 'lead_ja':['試験の対象','固定した選択','保存の検証'], 'source_url':self.paper['source_url'], 'summary_file':'summary.md', 'figures':figures})
+        write(directory/'result.json', {'id':self.paper['id'], 'version':'v1', 'title_ja':'実資料の決定論的な試験', 'lead_ja':['試験の対象','固定した選択','保存の検証'], 'source_url':self.paper['source_url'], 'summary_file':'summary.md', 'figures':figures})
         (directory/'summary.md').write_text('## 実資料を用いた試験\n\n原図の保存と表示を決定論的に検証する。\n\n'+'\n\n'.join(f'![{f["number"]}]({f["src"]})' for f in figures)+'\n')
         token = claim(self.root, task, 'deterministic-regression-fixture-not-model-execution')
         finish(self.root, task, token)

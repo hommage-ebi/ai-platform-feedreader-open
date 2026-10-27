@@ -9,7 +9,8 @@ export function allowedTrackedPath(path) {
  if(/\/(site|figures|tasks)\//.test(path))return false;
  if(/\/(collection-capture|processing-policy|paper-policies)\.json$/.test(path))return /^data\/runs\/[^/]+\/[^/]+\/run\/(collection-capture|processing-policy|paper-policies)\.json$/.test(path);
  const name=path.split('/').at(-1);
- if(/\/(groups|task-receipts)\/[^/]+\.json$/.test(path))return true;
+ if(/\/groups\//.test(path))return false;
+ if(/\/(policies|task-receipts)\/[^/]+\.json$/.test(path))return true;
  return /^(preflight|ledger|release|candidates|classification|source|metadata|result|selected|groups|classifications|classification-proofs|model-request|model-output-receipt)\.json$/.test(name)||/^classification-[\w-]+\.json$/.test(name)||name==='summary.md'||name==='failures.jsonl';
 }
 // Read immutable index object IDs, never the potentially different working tree.
@@ -52,6 +53,12 @@ export function checkRetention({cwd=process.cwd()}={}) {
   if(!['100644','100755','120000'].includes(mode))throw new Error(`Unsupported Git index entry: ${label}`);
   const text=git(root,['cat-file','blob',oid]);
   if(hasCredential(text,path))throw new Error(`Possible credential: ${label}`);
+  if(/^data\/runs\/[^/]+\/[^/]+\/run\/(?:candidates|selected|paper-policies)\.json$/.test(path)) {
+   let rows;try {rows=JSON.parse(text);}catch {throw new Error(`Invalid run record: ${label}`);}
+   if(path.endsWith('/paper-policies.json')) {
+    if(Object.values(rows).some(row=>'policy' in row))throw new Error(`Embedded per-paper policy: ${label}`);
+   } else if(!Array.isArray(rows)||rows.some(row=>'title' in row||'abstract' in row))throw new Error(`Verbose candidate record: ${label}`);
+  }
   if(path.startsWith('data/runs/')&&/data:(?:application\/pdf|image\/)\S*;base64,/.test(text))throw new Error(`Embedded raw material: ${label}`);
  }
  return records.length;

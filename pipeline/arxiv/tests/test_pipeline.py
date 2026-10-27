@@ -37,7 +37,7 @@ class PipelineTests(unittest.TestCase):
         body=('<article><p>'+('Synthetic manuscript. '*60)+'</p></article>').encode();(p/'source.html').write_bytes(body)
         write(p/'source.json',{'id':paper['id'],'version':paper['version'],'source_url':paper['source_url'],'url':paper['source_url'].replace('/abs/','/html/'),'kind':'html','local_file':'source.html','sha256':digest(body),'verified':True})
         write(p/'metadata.json',{'schema_version':1,'id':paper['id'],'version':paper['version'],'title':paper['title'],'authors':['A. Author'],'affiliations':['Department, University'],'institution_names':['University'],'field_sources':{},'source':paper['source_url'],'notes':[],'missing_fields':[]})
-        write(p/'result.json',{'id':paper['id'],'version':paper['version'],'title_ja':'材料研究','summary_ja':'短い要約','lead_ja':['研究の問い','独自の方法','結果と限界'],'source_url':paper['source_url'],'summary_file':'summary.md','figures':[]})
+        write(p/'result.json',{'id':paper['id'],'version':paper['version'],'title_ja':'材料研究','lead_ja':['研究の問い','独自の方法','結果と限界'],'source_url':paper['source_url'],'summary_file':'summary.md','figures':[]})
         (p/'summary.md').write_text('## 方法\n\n本文の式 \\(E=\\alpha_1\\) を説明する。\n\n\\[\nE = \\sum_i x_i\n\\]\n\n結果を検討する。');self.attest(p);return p
     def attest(self,p):
         from pipeline.arxiv.make_tasks import summary_fingerprint
@@ -132,7 +132,7 @@ class PipelineTests(unittest.TestCase):
         write(self.run/'run/candidates.json',[PAPER]);self.classify([PAPER]);task=make_tasks(self.run,'summary')[0]
         token=claim(self.root,task,'deterministic-test-fixture-not-model-execution')
         chosen={'src':'selected:fig1','number':'Figure 1','caption':'chosen','source':source['url'],'selection':{'kind':'html','element_id':'F1','asset_index':0}}
-        write(p/'result.json',{'id':PAPER['id'],'version':'v1','title_ja':'図選択の試験','summary_ja':'決定論的な試験','lead_ja':['問い','方法','結果'],'source_url':PAPER['source_url'],'summary_file':'summary.md','figures':[chosen]})
+        write(p/'result.json',{'id':PAPER['id'],'version':'v1','title_ja':'図選択の試験','lead_ja':['問い','方法','結果'],'source_url':PAPER['source_url'],'summary_file':'summary.md','figures':[chosen]})
         (p/'summary.md').write_text('## 検証\n\n選択された原図を確認する。\n\n![chosen](selected:fig1)\n')
         with patch('pipeline.arxiv.assemble.materialize_selection',side_effect=AssertionError('Must finish before extraction')),self.assertRaises(ValueError):
             assemble_one(self.run,PAPER,store=MemoryStore())
@@ -255,7 +255,7 @@ class PipelineTests(unittest.TestCase):
         prepare_one(self.run,PAPER,lambda url:(body,'text/html',url));write(self.run/'run/candidates.json',[PAPER]);self.classify([PAPER])
         task=make_tasks(self.run,'summary')[0];token=claim(self.root,task,'synthetic-model-output')
         p=paper_path(self.run,PAPER);metadata=read(p/'metadata.json');metadata['authors']=['Synthetic Author'];write(p/'metadata.json',metadata)
-        write(p/'result.json',{'id':PAPER['id'],'version':'v1','title_ja':'試験記事','summary_ja':'試験の説明','lead_ja':['問い','方法','結果'],'source_url':PAPER['source_url'],'summary_file':'summary.md','figures':[]})
+        write(p/'result.json',{'id':PAPER['id'],'version':'v1','title_ja':'試験記事','lead_ja':['問い','方法','結果'],'source_url':PAPER['source_url'],'summary_file':'summary.md','figures':[]})
         (p/'summary.md').write_text('## 検証\n\n人工的な文章を説明する。')
         finish(self.root,task,token);self.assertEqual(assemble_one(self.run,PAPER)['authors'],['Synthetic Author'])
         cleanup(p);self.assertEqual(make_tasks(self.run,'summary'),[])

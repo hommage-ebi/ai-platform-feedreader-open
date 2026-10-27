@@ -2,6 +2,7 @@
 from pathlib import Path
 from pipeline.shared.runtime import digest, project_root, read, record, write
 from .common import identity, published_versions, validate_candidates
+from .inputs import input_hash,compact,compact_run,model_input
 from .policy import run_policy,paper_policy,bind_papers,relevance_template,validate_bindings,agent_settings
 
 def validate_classification(rows,inputs,run=None):
@@ -19,7 +20,6 @@ def validate_classification(rows,inputs,run=None):
 def prompt_hash(run,paper=None):
     return digest(relevance_template(run,[paper] if paper else []).encode())
 
-def input_hash(p):return digest({k:p[k] for k in ('id','version','title','abstract')})
 
 def classification_proof(p,result,ph,run):
     settings=agent_settings(run,p,'classify')
@@ -39,7 +39,7 @@ def validate_current_selection(run,paper):
     if result['decision']=='exclude' or selected.get(key)!={**candidate,**result}:raise ValueError('Current selection is missing or stale')
 
 def split(run):
-    run=Path(run); rows=validate_candidates(read(run/'run/candidates.json',[])); results=read(run/'run/classifications.json',[])
+    run=Path(run);run_policy(run);validate_bindings(run);rows=compact_run(run);results=read(run/'run/classifications.json',[])
     proofs=read(run/'run/classification-proofs.json',{});run_policy(run);validate_bindings(run)
     eligible=[]
     for p in rows:
@@ -72,7 +72,8 @@ def split(run):
     paths=[]
     for group in groups:
         ph=prompt_hash(run,group[0])
-        path=run/'run/groups'/f'{digest({"papers":group,"prompt_hash":ph})}.json';write(path,group);write(path.with_name(path.stem+'.request.json'),{'input_hash':digest(group),'prompt_hash':ph});paths.append(str(path.relative_to(run)))
+        group=[model_input(run,p) for p in group]
+        path=run/'.cache/groups'/f'{digest({"papers":group,"prompt_hash":ph})}.json';write(path,group);write(path.with_name(path.stem+'.request.json'),{'input_hash':digest(group),'prompt_hash':ph});paths.append(str(path.relative_to(run)))
     write(run/'run/groups.json',paths);record(run,'split','complete',{'groups':len(paths),'pending':len(rows)})
     return paths
 
@@ -107,5 +108,5 @@ def merge(run):
     candidates=validate_candidates(read(run/'run/candidates.json',[])); selected=[]
     for p in candidates:
         result=existing.get(identity(p))
-        if result and result['decision'] in ('include','uncertain'):selected.append({**p,**result})
+        if result and result['decision'] in ('include','uncertain'):selected.append({**compact(p),**result})
     write(run/'run/selected.json',selected);return selected

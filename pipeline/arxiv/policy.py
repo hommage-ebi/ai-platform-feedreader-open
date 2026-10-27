@@ -37,14 +37,30 @@ def run_policy(run):
         value['sha256']=digest(value);validate_policy(value);write(path,value)
         return value
 
-def fingerprint(paper):return digest({k:paper[k] for k in ('id','version','title','abstract')})
+from .inputs import input_hash as fingerprint
+
+def binding_policy(run,entry):
+    # Legacy embedded snapshots remain readable and migrate on the next binding write.
+    if 'policy' in entry:return validate_policy(entry['policy'])
+    sha=entry['policy_sha256']
+    current=validate_policy(read(Path(run)/'run/processing-policy.json'))
+    if current['sha256']==sha:return current
+    value=validate_policy(read(Path(run)/'run/policies'/f'{sha}.json'))
+    if value['sha256']!=sha:raise ValueError('Processing policy reference hash mismatch')
+    return value
+
+def policy_reference(run,value):
+    value=validate_policy(value);current=run_policy(run)
+    if value['sha256']!=current['sha256']:write(Path(run)/'run/policies'/f"{value['sha256']}.json",value)
+    return value['sha256']
 
 def validate_bindings(run):
     bindings=read(Path(run)/'run/paper-policies.json',{})
     if not isinstance(bindings,dict):raise ValueError('Invalid paper policy bindings')
     for key,entry in bindings.items():
-        if not isinstance(key,str) or not isinstance(entry,dict) or set(entry)!={'input_sha256','policy'} or not isinstance(entry['input_sha256'],str) or not re.fullmatch('[0-9a-f]{64}',entry['input_sha256']):raise ValueError('Invalid paper policy binding')
-        validate_policy(entry['policy'])
+        if not isinstance(key,str) or not isinstance(entry,dict) or set(entry) not in ({'input_sha256','policy'},{'input_sha256','policy_sha256'}) or not isinstance(entry['input_sha256'],str) or not re.fullmatch('[0-9a-f]{64}',entry['input_sha256']):raise ValueError('Invalid paper policy binding')
+        if 'policy_sha256' in entry and (not isinstance(entry['policy_sha256'],str) or not re.fullmatch('[0-9a-f]{64}',entry['policy_sha256'])):raise ValueError('Invalid processing policy reference')
+        binding_policy(run,entry)
     return bindings
 
 def bind_papers(run,papers):
@@ -55,7 +71,7 @@ def bind_papers(run,papers):
         for paper in papers:
             key='/'.join(identity(paper));fp=fingerprint(paper)
             if key in bindings:
-                entry=bindings[key];validate_policy(entry['policy'])
+                entry=bindings[key];binding_policy(run,entry)
                 if entry['input_sha256']!=fp:raise ValueError('Changed input for identical version')
                 continue
             chosen=None
@@ -70,9 +86,9 @@ def bind_papers(run,papers):
                     if all(identity(p)!=identity(paper) for p in rows):continue
                     raise ValueError('Historical paper policy unavailable for '+key)
                 if key in mapping:
-                    entry=mapping[key];validate_policy(entry['policy'])
+                    entry=mapping[key];binding_policy(old.parent,entry)
                     if entry['input_sha256']!=fp:raise ValueError('Changed input for identical version in historical run')
-                    candidate=entry['policy']
+                    candidate=binding_policy(old.parent,entry)
                 else:
                     try:rows=validate_candidates(read(old/'candidates.json',[]))
                     except (ValueError,TypeError):continue
@@ -83,7 +99,8 @@ def bind_papers(run,papers):
                     candidate=validate_policy(read(old/'processing-policy.json'))
                 if chosen is not None and chosen['sha256']!=candidate['sha256']:raise ValueError('Conflicting historical paper policies for '+key)
                 chosen=candidate
-            bindings[key]={'input_sha256':fp,'policy':chosen or current}
+            bindings[key]={'input_sha256':fp,'policy_sha256':policy_reference(run,chosen or current)}
+        bindings={key:{'input_sha256':entry['input_sha256'],'policy_sha256':policy_reference(run,binding_policy(run,entry))} for key,entry in bindings.items()}
         write(path,bindings)
     return bindings
 
@@ -93,7 +110,7 @@ def paper_policy(run,paper):
         candidate=next((p for p in validate_candidates(read(run/'run/candidates.json',[])) if identity(p)==identity(paper)),None)
         if candidate is None:raise ValueError('Paper has no captured input for processing policy')
         bindings=bind_papers(run,[candidate])
-    entry=bindings[key];value=validate_policy(entry['policy'])
+    entry=bindings[key];value=binding_policy(run,entry)
     candidate=next((p for p in validate_candidates(read(run/'run/candidates.json',[])) if identity(p)==identity(paper)),None)
     if candidate is None or entry['input_sha256']!=fingerprint(candidate):raise ValueError('Paper policy input mismatch with current candidates')
     return value

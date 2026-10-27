@@ -14,7 +14,7 @@ def validate_output(paper_dir, require_provenance=False):
     key=identity(source)
     if identity(result)!=key or identity(meta)!=key or meta.get('schema_version')!=1 or source.get('verified') is not True:raise ValueError('Source/result/metadata identity mismatch')
     if result.get('source_url')!=source['source_url'] or result.get('summary_file')!='summary.md':raise ValueError('Wrong original source/summary file')
-    for field in ('title_ja','summary_ja'):
+    for field in ('title_ja',):
         if not isinstance(result.get(field),str) or not result[field].strip():raise ValueError('Missing '+field)
     lead=result.get('lead_ja')
     if not isinstance(lead,list) or len(lead)!=3 or any(not isinstance(x,str) or not x.strip() for x in lead):raise ValueError('Lead must contain three nonempty strings')
@@ -106,7 +106,7 @@ def assemble_one(run,paper,store=None):
         if result['figures'] and store is None:store=SitesStore()
         stored=[store_figure(paper,f,materialize_selection(p,source,f),p,store) for f in result['figures']]
     body=render_narrative(summary,result['figures'],linked or stored)
-    record_data={**{k:paper.get(k,[]) for k in ['id','version','date']},'title':meta.get('title',paper['title']),'source':'arxiv','title_ja':result['title_ja'],'summary_ja':result['summary_ja'],'lead_ja':result['lead_ja'],'authors':meta['authors'],'affiliations':meta['affiliations'],'institution_names':meta['institution_names'],'source_url':result['source_url'],'tags':paper.get('topics',[]),'stored_images':stored,'html_path':f"papers/{quote(paper['id'],safe='')}/{paper['version']}.html"}
+    record_data={**{k:paper.get(k,[]) for k in ['id','version','date']},'title':meta['title'],'source':'arxiv','title_ja':result['title_ja'],'lead_ja':result['lead_ja'],'authors':meta['authors'],'affiliations':meta['affiliations'],'institution_names':meta['institution_names'],'source_url':result['source_url'],'tags':paper.get('topics',[]),'stored_images':stored,'html_path':f"papers/{quote(paper['id'],safe='')}/{paper['version']}.html"}
     record_data['linked_images']=linked
     esc=lambda s:html.escape(str(s),quote=True)
     header=f'<header><h1>{esc(record_data["title"])}</h1><p class="title-ja">{esc(result["title_ja"])}</p><p class="authors">{esc(", ".join(meta["authors"]))}</p><p class="institutions">{esc(", ".join(meta["institution_names"]))}</p><ol class="lead">'+''.join('<li>'+esc(x)+'</li>' for x in result['lead_ja'])+'</ol></header>'

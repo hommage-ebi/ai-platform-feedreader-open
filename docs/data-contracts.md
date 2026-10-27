@@ -20,7 +20,7 @@ arXivの `lead_ja`、`authors`、`affiliations`、`institution_names` は、`pap
 
 記事一覧と版情報は `data/articles/papers.json`、記事本文は `data/articles/papers/` 配下のHTMLに保存し、Reader用の本文JSONを `dist/client/reader-articles/` へ生成する。Workerは公開記事一覧を参照し、D1にはユーザーの既読・評価を保存する。D1は記事本文の保管庫ではない。
 
-Gitにはコード・文書・設定に加え、`data/articles/` の記事JSON・生成HTML・manifest・公開用集計と、`data/runs/` の再開に必要な小さなテキスト記録を保存する。実行フォルダ内の保存対象は初回処理の設定・プロンプトのsnapshot、候補・分類結果、書誌・出典メタデータ、検証済みモデル出力、工程台帳・失敗記録・公開記録とする。秘密情報は含めない。
+Gitにはコード・文書・設定に加え、`data/articles/` の記事JSON・生成HTML・manifest・公開用集計と、`data/runs/` の再開に必要な小さなテキスト記録を保存する。実行フォルダ内の保存対象は初回処理の設定・プロンプトのsnapshot、ID・版・入力ハッシュによる候補・採用一覧と分類結果、書誌・出典メタデータ、検証済みモデル出力、工程台帳・失敗記録・公開記録とする。秘密情報は含めない。
 
 同じ実行フォルダに置く原HTML・PDF・全文抽出テキスト・途中の図・生成タスクJSON・`site/` の中間コピーは一時ファイルで、永続保存対象に含めない。`.gitignore` と保存前の検査で除外し、読取り・図保存に不要になったら片付ける。原論文全体をGitやR2へ保存しない。依存環境とキャッシュ、`.sites-runtime/`、`dist/`、デバッグログもGit管理しない。
 
@@ -28,7 +28,7 @@ arXiv HTML由来の図はarXivへの直リンクとし、画像実体をSiteへ�
 
 記事コンテンツは記事キーと版で対応付け、ユーザー状態は `(user_id, article_id)` で保存する。版・本文・図の更新でユーザー状態を初期化しない。
 
-arXivの `run/processing-policy.json` はrun開始時の関心設定・収集カテゴリ・モデル設定・分類と解説のプロンプト全文をハッシュ付きで保持する。`run/paper-policies.json` は論文ID・版に入力ハッシュと初回収集時の設定を結び付ける。両ファイルは再開に必要な正規記録としてGitへ保存し、原資料や絶対パス付きタスクJSONとは区別する。設定変更の適用範囲と再開時の照合は [arXivの設定変更と再開](pipeline-arxiv.md#設定変更と再開) に従う。
+arXivの `run/processing-policy.json` はrun開始時の関心設定・収集カテゴリ・モデル設定・分類と解説のプロンプト全文をハッシュ付きで保持する。`run/paper-policies.json` は論文ID・版に入力ハッシュと設定ハッシュだけを結び付け、設定やプロンプト本体を論文ごとに複製しない。他run由来の異なる設定は `run/policies/<sha256>.json` に各1回保存する。候補・採用一覧にはtitle・abstractを保存せず、分類用の一時入力と分割ファイルはrun内の `.cache/` に置いてGitから除外し、分類完了後に `cleanup` で削除する。未分類の一時入力が失われた場合は元の入力の復元が必要になる。両ファイルは再開に必要な正規記録としてGitへ保存し、原資料や絶対パス付きタスクJSONとは区別する。設定変更の適用範囲と再開時の照合は [arXivの設定変更と再開](pipeline-arxiv.md#設定変更と再開) に従う。
 
 ### 生成runの所有権とコレクション復旧
 

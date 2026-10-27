@@ -44,7 +44,10 @@ class TaskDescriptorTests(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as temp:
                     clone=Path(temp)/'clone';shutil.copytree(self.root,clone,ignore=shutil.ignore_patterns('.cache'))
                     with patch.dict(os.environ,{'PROJECT_ROOT':str(clone)}):
-                        cloned_run=clone/'data/runs/2026-10-18/test';new_task=make_tasks(cloned_run,'classify')[0]
+                        cloned_run=clone/'data/runs/2026-10-18/test'
+                        # In-flight models need an explicit transfer of disposable inputs.
+                        shutil.copytree(self.run/'.cache',cloned_run/'.cache')
+                        new_task=make_tasks(cloned_run,'classify')[0]
                         active=active_claims(clone,state_dir(clone));self.assertEqual(len(active),1);self.assertFalse(active[self.task['cache_key']].get('conflict'))
                         with self.assertRaisesRegex(RuntimeError,'already running'):claim(clone,new_task,'duplicate')
                         self.output(new_task);finish(clone,new_task,token)

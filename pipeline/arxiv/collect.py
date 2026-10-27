@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from pipeline.shared.runtime import digest, lock, now, read, record, write
 from .common import identity, recompute_completion, today, validate_candidates
 from .policy import run_policy,bind_papers
+from .inputs import compact,remember,input_hash
 
 def fetch(url):
     if not url.startswith('https://rss.arxiv.org/rss/'): raise ValueError('Only official arXiv RSS allowed')
@@ -63,10 +64,11 @@ def collect(run,target_date,feeds=None,fetcher=fetch):
             covered={item['url']:item for item in capture.get('scope',[]) if item.get('status')=='verified'}
         for p in successes:
             key=identity(p)
-            if key in merged and any(merged[key][f]!=p[f] for f in ['title','abstract']):
+            if key in merged and input_hash(merged[key])!=input_hash(p):
                 conflicts.append({'id':p['id'],'error':'Changed input for identical version'})
             else:merged[key]=p
-        rows=list(merged.values())
+        remember(run,list(merged.values()))
+        rows=[compact(p) for p in merged.values()]
         for paper in rows:
             try:
                 bind_papers(run,[paper]);record(run,'policy','complete',{},'/'.join(identity(paper)))

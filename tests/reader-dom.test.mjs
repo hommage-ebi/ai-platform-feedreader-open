@@ -117,7 +117,7 @@ test('generic prototype-like IDs have independent saved state and absent source 
 
 test('unread default and search preserve saved state with compact list controls',async()=>{
  const w=windowFor(html),writes=[];
- const papers=[{id:'a',source:'arxiv',title:'Zeta',title_ja:'電池材料',summary_ja:'固体の合成',date:'2026-10-19',version:'v2',tags:['synthesis-simulation']},{id:'b',source:'arxiv',title:'Alpha',date:'2026-10-18',version:'v1'},{id:'c',source:'Blog',title:'Read paper',date:'2026-10-20',version:'v1'}];
+ const papers=[{id:'a',source:'arxiv',title:'Zeta',title_ja:'電池材料',lead_ja:['固体の合成','方法','結果'],date:'2026-10-19',version:'v2',tags:['synthesis-simulation']},{id:'b',source:'arxiv',title:'Alpha',date:'2026-10-18',version:'v1'},{id:'c',source:'Blog',title:'Read paper',date:'2026-10-20',version:'v1'}];
  w.fetch=async(url,options)=>{if(options?.method==='POST'){writes.push(JSON.parse(options.body));return{ok:true,json:async()=>({ok:true})};}return{ok:true,json:async()=>url==='/papers.json'?papers:url==='/api/reading-state'?{readIds:['c']}:url==='/api/article-preferences'?{starredIds:['b'],badIds:[]}:{}};};
  w.eval(appCode);await tick();const doc=w.document;
  assert.equal(doc.querySelector('#read-filter').value,'unread');assert.equal(doc.querySelectorAll('.paper-row').length,2);assert.equal(doc.querySelector('#unread-count,#count'),null);

@@ -107,7 +107,7 @@ class InterestsConfig(unittest.TestCase):
         prepare_one(self.run,PAPER,lambda url:(body,'text/html',url))
         task=make_tasks(self.run,'summary')[0];token=claim(self.root,task,'synthetic-summary')
         directory=paper_path(self.run,PAPER)
-        write(directory/'result.json',{'id':PAPER['id'],'version':'v1','title_ja':'試験','summary_ja':'試験の要約','lead_ja':['問い','方法','結果'],'source_url':PAPER['source_url'],'summary_file':'summary.md','figures':[]})
+        write(directory/'result.json',{'id':PAPER['id'],'version':'v1','title_ja':'試験','lead_ja':['問い','方法','結果'],'source_url':PAPER['source_url'],'summary_file':'summary.md','figures':[]})
         (directory/'summary.md').write_text('## 説明\n\n合成した文章による検証です。')
         return task,token,directory
 
@@ -177,11 +177,11 @@ class InterestsConfig(unittest.TestCase):
         for path in paths:
             with self.subTest(path=path.name):
                 original=path.read_bytes();value=read(path)
-                policy=value if path==paths[0] else value[PAPER['id']+'/v1']['policy']
-                policy['interests']['application_guidance']='Tampered policy'
+                if path==paths[0]:value['interests']['application_guidance']='Tampered policy'
+                else:value[PAPER['id']+'/v1']['policy_sha256']='0'*64
                 write(path,value)
                 operation=(lambda:run_policy(self.run)) if path==paths[0] else (lambda:paper_policy(self.run,PAPER))
-                with self.assertRaisesRegex(ValueError,'hash mismatch'):operation()
+                with self.assertRaises(ValueError):operation()
                 with self.assertRaises(ValueError):split(self.run)
                 self.assertEqual(path.read_bytes(),(json.dumps(value,ensure_ascii=False,indent=2)+'\n').encode())
                 path.write_bytes(original)

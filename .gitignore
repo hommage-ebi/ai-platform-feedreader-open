@@ -28,7 +28,7 @@ data/runs/**/tasks/**
 data/runs/**/*tasks.json
 !data/runs/**/selected.json
 !data/runs/**/groups.json
-!data/runs/**/groups/*.json
+data/runs/**/groups/**
 !data/runs/**/task-receipts/*.json
 !data/runs/**/classifications.json
 !data/runs/**/classification-proofs.json
@@ -53,3 +53,7 @@ data/articles/.collection-transaction.json
 !data/runs/*/*/run/processing-policy.json
 !data/runs/*/*/run/paper-policies.json
 data/runs/.paper-policy.lock/
+
+# One copy per distinct imported policy; model inputs are disposable
+!data/runs/*/*/run/policies/*.json
+**/.cache/
