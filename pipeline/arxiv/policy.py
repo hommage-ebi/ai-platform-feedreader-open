@@ -1,6 +1,6 @@
 """Durable first-capture policies. Editing defaults only affects new work."""
 from pathlib import Path
-import json,re
+import json,re,hashlib
 from pipeline.shared.runtime import digest, lock, project_root, read, write
 from .common import identity, validate_candidates
 from pipeline.shared.interests import load_interests,validate_interests,render_relevance
@@ -54,13 +54,36 @@ def policy_reference(run,value):
     if value['sha256']!=current['sha256']:write(Path(run)/'run/policies'/f"{value['sha256']}.json",value)
     return value['sha256']
 
+_binding_cache={}
+
+def _binding_snapshot(run):
+    """Include the bytes of every referenced policy, not just file mtimes."""
+    base=Path(run)/'run';path=base/'paper-policies.json'
+    raw=path.read_bytes() if path.exists() else b'{}'
+    bindings=json.loads(raw)
+    if not isinstance(bindings,dict):raise ValueError('Invalid paper policy bindings')
+    refs=sorted({entry['policy_sha256'] for entry in bindings.values()
+                 if isinstance(entry,dict) and isinstance(entry.get('policy_sha256'),str)
+                 and re.fullmatch('[0-9a-f]{64}',entry['policy_sha256'])})
+    paths=[base/'processing-policy.json',*(base/'policies'/f'{sha}.json' for sha in refs)]
+    h=hashlib.sha256(raw)
+    for path in paths:
+        h.update(str(path).encode());h.update(b'\0')
+        h.update(path.read_bytes() if path.exists() else b'<missing>')
+    return h.digest(),raw,bindings
+
 def validate_bindings(run):
-    bindings=read(Path(run)/'run/paper-policies.json',{})
+    cache_key=str(Path(run).resolve())
+    signature,raw,bindings=_binding_snapshot(run)
+    if _binding_cache.get(cache_key)==signature:
+        return bindings  # freshly decoded: callers may mutate it
     if not isinstance(bindings,dict):raise ValueError('Invalid paper policy bindings')
     for key,entry in bindings.items():
         if not isinstance(key,str) or not isinstance(entry,dict) or set(entry) not in ({'input_sha256','policy'},{'input_sha256','policy_sha256'}) or not isinstance(entry['input_sha256'],str) or not re.fullmatch('[0-9a-f]{64}',entry['input_sha256']):raise ValueError('Invalid paper policy binding')
         if 'policy_sha256' in entry and (not isinstance(entry['policy_sha256'],str) or not re.fullmatch('[0-9a-f]{64}',entry['policy_sha256'])):raise ValueError('Invalid processing policy reference')
         binding_policy(run,entry)
+    if _binding_snapshot(run)[0]!=signature:raise ValueError('Processing policies changed during validation')
+    _binding_cache[cache_key]=signature
     return bindings
 
 def bind_papers(run,papers):

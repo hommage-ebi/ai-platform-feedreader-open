@@ -42,11 +42,17 @@ def split(run):
     run=Path(run);run_policy(run);validate_bindings(run);rows=compact_run(run);results=read(run/'run/classifications.json',[])
     proofs=read(run/'run/classification-proofs.json',{});run_policy(run);validate_bindings(run)
     eligible=[]
-    for p in rows:
-        try:
-            bind_papers(run,[p]);eligible.append(p)
-            record(run,'policy','complete',{},'/'.join(identity(p)))
-        except (ValueError,TypeError,KeyError) as exc:record(run,'policy','blocked',{'error':str(exc)},'/'.join(identity(p)))
+    try:
+        if rows:bind_papers(run,rows)
+        eligible=rows
+        for p in rows:record(run,'policy','complete',{},'/'.join(identity(p)))
+    except (ValueError,TypeError,KeyError):
+        # Preserve per-paper isolation if even one historical binding is invalid.
+        for p in rows:
+            try:
+                bind_papers(run,[p]);eligible.append(p)
+                record(run,'policy','complete',{},'/'.join(identity(p)))
+            except (ValueError,TypeError,KeyError) as exc:record(run,'policy','blocked',{'error':str(exc)},'/'.join(identity(p)))
     rows=eligible
     indexed={identity(r):r for r in results};frozen=published_versions(run)
     for p in rows:
@@ -109,4 +115,6 @@ def merge(run):
     for p in candidates:
         result=existing.get(identity(p))
         if result and result['decision'] in ('include','uncertain'):selected.append({**compact(p),**result})
-    write(run/'run/selected.json',selected);return selected
+    write(run/'run/selected.json',selected)
+    if len(existing)==len(candidate_map):record(run,'classify','complete',{'classified':len(existing)})
+    return selected

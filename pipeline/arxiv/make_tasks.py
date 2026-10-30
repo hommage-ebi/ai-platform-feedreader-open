@@ -195,6 +195,8 @@ def finish(root,task,token):
         write(run/'run/task-receipts'/f"{task['cache_key']}.json",durable)
     attest_summary(task)
     release(root,task['cache_key'],token)
+    if task['kind']=='summary':
+        record(run,'summary','complete',{'cache_key':task['cache_key']},'/'.join(identity(task['input_fingerprint'])))
 
 def reuse(root,task):
     dest=state_dir(root)/'results'/task['cache_key'];receipt=read(dest/'receipt.json')

@@ -25,7 +25,9 @@ def validate_output(paper_dir, require_provenance=False):
         if not isinstance(values,list) or any(not isinstance(x,str) or not x.strip() for x in values):raise ValueError('Invalid metadata '+field)
     if len(set(meta['institution_names']))!=len(meta['institution_names']):raise ValueError('Duplicate institution names')
     summary=(p/'summary.md').read_text()
-    if not summary.strip() or re.search(r'^#\s',summary,re.M) or re.search(r'<\s*/?\s*[A-Za-z][^>]*>',summary):raise ValueError('Summary empty or contains H1/raw HTML')
+    # Markdown autolinks are URLs, not raw HTML. Rendering still sanitizes URLs.
+    without_autolinks=re.sub(r'<https?://[^\s<>]+>','',summary)
+    if not summary.strip() or re.search(r'^#\s',summary,re.M) or re.search(r'<\s*/?\s*[A-Za-z][^>]*>',without_autolinks):raise ValueError('Summary empty or contains H1/raw HTML')
     if any(x in summary for x in lead):raise ValueError('Lead repeated in narrative')
     if re.search(r'\]\(\s*(?:javascript:|data:|file:)',summary,re.I):raise ValueError('Unsafe Markdown URL')
     image_refs=[m.group(2) for m in IMAGE_RE.finditer(summary)]

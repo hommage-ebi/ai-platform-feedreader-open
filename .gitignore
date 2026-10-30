@@ -20,6 +20,7 @@ data/runs/**
 !data/runs/**/classification.json
 !data/runs/**/classification-*.json
 !data/runs/**/source.json
+!data/runs/**/source-history.json
 !data/runs/**/metadata.json
 !data/runs/**/result.json
 !data/runs/**/summary.md
