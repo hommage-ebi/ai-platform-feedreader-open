@@ -17,7 +17,7 @@
 ```json
 {
   "schema_version": 1,
-  "categories": ["cond-mat", "physics.comp-ph", "cs.LG"]
+  "categories": ["cond-mat.mtrl-sci", "physics.chem-ph", "physics.comp-ph", "cs.AI", "cs.LG", "cs.CL"]
 }
 ```
 
