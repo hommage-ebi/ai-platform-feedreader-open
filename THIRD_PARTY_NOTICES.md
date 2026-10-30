@@ -26,6 +26,10 @@ Primary sources:
 - [KaTeX license](https://github.com/KaTeX/KaTeX/blob/main/LICENSE)
 - [DOMPurify licenses](https://github.com/cure53/DOMPurify)
 
+## Source icons
+
+The sidebar uses the [arXiv favicon](https://arxiv.org/static/browse/0.3.4/images/icons/favicon-32x32.png) supplied by arXiv. This mark identifies the source of articles and remains the property of its owner; it is not licensed under this project's code license.
+
 ## Other dependencies
 
 Node and Python dependencies are pinned in `package-lock.json` and `pipeline/uv.lock`; dependency code is not included in the source archive. Each package retains its own upstream license. Installing or distributing dependencies is separate from choosing a license for this repository.

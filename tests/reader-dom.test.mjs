@@ -10,6 +10,16 @@ const appCode = await bundle('app.js');
 const html = await readFile(`${root}reader/index.html`,'utf8');
 function windowFor(markup='<article id="article"></article>') { const dom = new JSDOM(markup.startsWith('<!doctype') ? markup : '<!doctype html>' + markup,{url:'https://reader.example/',runScripts:'outside-only',pretendToBeVisual:true}); dom.window.structuredClone = structuredClone; dom.window.scrollTo = ({top=0}) => {dom.window.scrollY=top;}; return dom.window; }
 const tick = () => new Promise(resolve=>setTimeout(resolve,35));
+test('sidebar distinguishes all articles and arXiv, with a fallback for other sources',async()=>{
+ const w=windowFor(html);
+ const papers=[{id:'a',source:'arXiv',title:'A',version:'v1'},{id:'b',source:'Other',title:'B',version:'v1'}];
+ w.fetch=async url=>({ok:true,json:async()=>url==='/papers.json'?papers:url==='/api/reading-state'?{readIds:[]}:url==='/api/article-preferences'?{starredIds:[],badIds:[]}: {}});
+ w.eval(appCode);await tick();
+ const button=label=>[...w.document.querySelectorAll('#feeds button')].find(b=>b.querySelector('.feed-name')?.textContent===label);
+ for(const [label,kind] of [['すべての記事','all'],['arXiv','arxiv'],['Other','source']]){const icon=button(label).querySelector('.feed-symbol');assert.ok(icon.classList.contains(`feed-symbol--${kind}`));assert.equal(icon.getAttribute('aria-hidden'),'true');}
+ assert.ok(button('すべての記事').querySelector('svg'));assert.equal(button('arXiv').querySelector('.feed-symbol').textContent,'');
+ button('arXiv').click();assert.deepEqual([...w.document.querySelectorAll('.paper-row')].map(row=>row.dataset.id),['a']);w.close();
+});
 test('sanitizer removes executable content and remote figures while keeping semantics',()=>{
  const w=windowFor(); w.eval(rendererCode);
  const fragment=w.ReaderModule.safeHTML('<h2 onclick="alert(1)">Title</h2><script>bad()</script><iframe src="https://evil.test"></iframe><img src="https://evil.test/tracker" onerror="bad()"><img src="/api/images/abc"><img src="https://arxiv.org/html/2610.22855v1/x1.png"><img src="https://arxiv.org.evil.test/html/2610.22855v1/x1.png"><a href="javascript:bad()">bad</a><figure><figcaption>図1 内容</figcaption></figure>');

@@ -1,6 +1,6 @@
 import { collection, shortcut, versionData, createStateStore, formatUpdated } from './reader-core.js';
 import { createArticleRenderer, safeHTML, typesetMath } from './article-renderer.js';
-import { badIcon, paintControl } from './icons.js';
+import { badIcon, feedSymbol, paintControl } from './icons.js';
 import { bindReaderGestures } from './gestures.js';
 import interestConfig from '../pipeline/config/interests.json';
 import './reader.css';
@@ -44,7 +44,9 @@ function renderFeeds() {
   for (const entry of feeds) {
     const saved = entry.id === 'starred' || entry.id === 'bad', active = entry.id === feed;
     const b = text('button', '', `feed-button${saved ? ' saved-view' : ''}${entry.id === 'starred' ? ' saved-start' : ''}`); b.classList.toggle('active', active); b.setAttribute('aria-current', active ? 'page' : 'false');
-    const icon = text('span', saved ? entry.id === 'starred' ? '★' : '' : 'a', saved ? 'saved-icon' : 'feed-symbol'); icon.setAttribute('aria-hidden', 'true'); if (entry.id === 'bad') icon.innerHTML = badIcon;
+    const symbol = saved ? null : feedSymbol(entry.id);
+    const icon = text('span', saved && entry.id === 'starred' ? '★' : '', saved ? 'saved-icon' : `feed-symbol feed-symbol--${symbol.kind}`);
+    icon.setAttribute('aria-hidden', 'true'); if (entry.id === 'bad') icon.innerHTML = badIcon; else if (symbol) icon.innerHTML = symbol.markup;
     const count = saved ? papers.filter(p => store.states[p.id]?.[entry.id]).length : collection(papers, store.states, entry.id, 'unread').length;
     b.append(icon, text('span', entry.label, 'feed-name'), text('span', count, 'count')); b.onclick = () => changeCollection(entry.id, saved ? 'all' : 'unread', { query: '' }); nav.append(b);
   }
