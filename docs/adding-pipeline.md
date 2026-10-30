@@ -39,6 +39,8 @@ pipeline/<source>/
 
 記事には情報源を含む安定した `id`、`source`、原文の `source_url` を持たせる。本文はHTML内の一つの `.narrative` に置き、版・画像の参照を [記事インターフェース](data-contracts.md#共通の記事インターフェース) に合わせる。
 
+Readerのサイドバーは `source` の値から表示先を作る。未知の情報源には共通の資料アイコンが自動で使われるため、pipeline追加時に専用アイコンは必須ではない。専用アイコンを用意する場合は `reader/icons.js` の `feedSymbol` と `reader/reader.css` の対応クラスを追加し、画像をローカルに置いて出典を `THIRD_PARTY_NOTICES.md` に記録する。表示名や既存のフィード選択・件数を維持し、アイコンと情報源の対応をテストする。
+
 工程の組立ては [workflow.py](../pipeline/arxiv/workflow.py)、記事生成は [assemble.py](../pipeline/arxiv/assemble.py)、共通記事形式への変換は [reader_adapter.py](../pipeline/arxiv/reader_adapter.py) を参照する。
 
 ## 4. テストする
