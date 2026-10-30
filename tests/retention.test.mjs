@@ -78,6 +78,14 @@ test('durable collection capture is allowed only at its canonical run location',
  for(const path of ['data/runs/collection-capture.json','data/runs/date/id/collection-capture.json','data/runs/date/id/run/papers/paper/collection-capture.json','data/runs/date/id/tasks/collection-capture.json','data/runs/date/id/site/collection-capture.json'])assert.equal(allowedTrackedPath(path),false,path);
  assert.equal(allowedTrackedPath('data/model-task-claims.json'),true);
 });
+test('source revision evidence survives ordinary staging',()=>fixture(async({cwd,git,stage})=>{
+ const path='data/runs/2026-10-19/run-id/run/papers/2610.12345/v1/source-history.json';
+ await stage('.gitignore',await readFile(new URL('../.gitignore',import.meta.url),'utf8'));
+ await mkdir(join(cwd,'data/runs/2026-10-19/run-id/run/papers/2610.12345/v1'),{recursive:true});
+ await stage(path,JSON.stringify([{kind:'html',sha256:'a'.repeat(64),verified:true}]));
+ assert.equal(allowedTrackedPath(path),true);assert.equal(checkRetention({cwd}),2);
+ assert.match(git('ls-files','--',path),/source-history\.json/);
+}));
 test('durable capture and claim registry survive ordinary staging and a fresh clone',()=>fixture(async({cwd,git,stage})=>{
  const capture='data/runs/2026-10-19/run-id/run/collection-capture.json';
  const claims='data/model-task-claims.json';

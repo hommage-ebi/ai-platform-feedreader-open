@@ -155,6 +155,8 @@ CLI="$PROJECT_ROOT/pipeline/arxiv/workflow.py"
 
 `CLAIM_TOKEN` には取得した値を設定する。`finish` が構造・ID・版・出力を検証してreceiptを保存し、枠を解放する。実行や検証に失敗した場合は原因を台帳へ記録し、モデルの停止を確認してから同じ引数で `finish` の代わりに `release` を実行する。解説も `run/summary_tasks.json` を指定して同じ操作を行う。
 
+途中経過の報告を完了とみなさず、モデル実行が実際に終了し、出力ファイルへの書込みが止まってから `finish` を実行する。receipt作成後に出力が変更された場合、そのreceiptでは記事化できないため、出力とタスクを確認して正式に再検証する。
+
 claimは当日・過去分を通じた同時起動数と、同一入力・プロンプトの重複起動を制限する。自動失効しないため、停止した処理を確認してから解放する。別マシンでも同じ共有チェックアウトとregistryを使い、独立コピーから同時起動しない。入力・保存済みプロンプト・モデル設定・出力バイト・原資料ハッシュを検証して再利用する。現在の設定ファイルの変更だけで過去の結果を無効化しない。`run/task-receipts/` はキャッシュ再構築に必要な保存記録とする。
 
 タスクJSONを作るだけではモデルは起動しない。必要な資料を読めない、指定モデルを使えない、結果を保存できない場合は、該当工程を止めて原因を記録する。
@@ -162,6 +164,12 @@ claimは当日・過去分を通じた同時起動数と、同一入力・プロ
 ### 分類結果をまとめて解説資料を準備する
 
 成功した分類結果からincludeとuncertainを採用する。同じ版の全文HTMLを優先し、利用できなければ同版PDFを使い、原資料と書誌・出典情報を用意する。prepareは画像を取得・抽出しない。原HTMLまたはPDFと必要な全文補助テキストは処理中だけ使う。
+
+HTMLの論文本体のfigureに欠落した画像がある場合、新規準備では同じ版のPDFを試す。既に検証済みHTMLを保存した未公開論文は、自動で資料形式を変更しない。元HTMLと欠落図を確認し、対象runのモデル処理が停止していることを確認してから、次の明示的な再準備を行う。
+
+    "$PY" "$CLI" prepare_pdf --paper-id 2610.12345 --paper-version v1
+
+IDと版は対象論文に置き換える。この操作は選択済み・未公開の論文に限り、元HTMLの同一性と欠落図、稼働中claim、既存のモデル出力を確認する。未検証の `result.json`・`summary.md` がある場合は、内容を確認して安全に退避した後に再実行する。元の出典記録は `source-history.json` に残す。変更後は `summary_tasks` を作り直し、同じ版のPDFを入力として解説と図の選択をやり直す。公開済み・公開確認中の版や検証済みモデル出力がある場合は自動で差し替えず、確認まで止める。
 
     uv run --project "$PROJECT_ROOT/pipeline" --locked --no-sync python "$PROJECT_ROOT/pipeline/arxiv/workflow.py" merge
     uv run --project "$PROJECT_ROOT/pipeline" --locked --no-sync python "$PROJECT_ROOT/pipeline/arxiv/workflow.py" prepare

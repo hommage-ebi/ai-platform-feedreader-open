@@ -11,7 +11,7 @@ export function allowedTrackedPath(path) {
  const name=path.split('/').at(-1);
  if(/\/groups\//.test(path))return false;
  if(/\/(policies|task-receipts)\/[^/]+\.json$/.test(path))return true;
- return /^(preflight|ledger|release|candidates|classification|source|metadata|result|selected|groups|classifications|classification-proofs|model-request|model-output-receipt)\.json$/.test(name)||/^classification-[\w-]+\.json$/.test(name)||name==='summary.md'||name==='failures.jsonl';
+ return /^(preflight|ledger|release|candidates|classification|source|source-history|metadata|result|selected|groups|classifications|classification-proofs|model-request|model-output-receipt)\.json$/.test(name)||/^classification-[\w-]+\.json$/.test(name)||name==='summary.md'||name==='failures.jsonl';
 }
 // Read immutable index object IDs, never the potentially different working tree.
 // Suppress Git stderr and replace errors: output must never include blob contents.

@@ -118,6 +118,11 @@ class AdversarialSourceTests(unittest.TestCase):
         refs=['https://evil.example/a.png','https://arxiv.org/html/2610.12345v2/a.png','https://arxiv.org/html/2610.99999v1/a.png','http://arxiv.org/html/2610.12345v1/a.png','https://user:password@arxiv.org/html/2610.12345v1/a.png','https://arxiv.org:443/html/2610.12345v1/a.png','../a.png','%2e%2e/a.png','%252e%252e/a.png','a.png?download=1','a.png#fragment','file:///tmp/a.png','data:image/png;base64,eA==','a\\b.png','']
         for ref in refs:
             with tempfile.TemporaryDirectory() as tmp,self.subTest(ref=ref):
+                if not ref:
+                    # Missing figure references now fail at source preparation.
+                    with self.assertRaisesRegex(ValueError,'PDF source version/type mismatch'):
+                        self.html_source(tmp,'<figure id="F1"><img src=""></figure>')
+                    continue
                 source,directory=self.html_source(tmp,'<figure id="F1"><img src="'+ref+'"></figure>')
                 with self.assertRaises(ValueError):materialize_selection(directory,source,self.html_figure(source),fetcher=lambda url:self.fail('Untrusted reference fetched'))
         for base in ['https://evil.example/','/html/2610.12345v2/','/html/2610.12345v1/nested/']:

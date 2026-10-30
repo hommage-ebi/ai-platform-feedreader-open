@@ -2,8 +2,23 @@ import {publishedCount} from './publication-counts.mjs';
 import {mkdir,readFile,writeFile,rename,rm} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {spawn} from 'node:child_process';
 import {validateSnapshot,hash} from './release-snapshot.mjs';
-export async function syncReleaseStatus(siteURL,{fetcher=fetch,token=process.env.SITES_SERVICE_TOKEN}={}){
+// urllib uses the runtime's HTTPS proxy and CA configuration. Credentials and
+// payload travel through stdin, never in arguments or temporary files.
+export function pythonStatusFetcher(python=process.env.READER_PYTHON||'python3'){
+ return (url,options={})=>new Promise((resolveRequest,reject)=>{
+  const child=spawn(python,[fileURLToPath(new URL('./site-status-fetch.py',import.meta.url))],{stdio:['pipe','pipe','pipe']});
+  let stdout='',stderr='';const timer=setTimeout(()=>child.kill(),65000);
+  child.stdout.on('data',chunk=>{stdout+=chunk;if(stdout.length>8*1024*1024)child.kill();});
+  child.stderr.on('data',chunk=>{stderr+=chunk;if(stderr.length>4096)child.kill();});
+  child.on('error',error=>{clearTimeout(timer);reject(error);});
+  child.on('close',code=>{clearTimeout(timer);try{const result=JSON.parse(stdout);if(code!==0||result.error)throw new Error(result.error||'Site status transport failed');resolveRequest({ok:result.status>=200&&result.status<300,status:result.status,json:async()=>JSON.parse(result.body)});}catch(error){reject(new Error('Site status transport failed: '+error.message));}});
+  child.stdin.on('error',()=>{});
+  child.stdin.end(JSON.stringify({url,method:options.method||'GET',headers:options.headers,body:options.body??null}));
+ });
+}
+export async function syncReleaseStatus(siteURL,{fetcher=fetch,token=process.env.SITES_SERVICE_TOKEN,timeoutMs=60000}={}){
  const url=new URL(siteURL);if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw new Error('Use the exact HTTPS Site origin');
  if(!token)throw new Error('SITES_SERVICE_TOKEN is required in the process environment');
  const lock=resolve('.sites-runtime/publish.lock'),guard=resolve(lock,'record.lock');await mkdir(guard);
@@ -27,11 +42,14 @@ export async function syncReleaseStatus(siteURL,{fetcher=fetch,token=process.env
  const receipt={schema_version:1,site_id:record.site_id,build_id:record.build_id,collection_sha256:record.collection_sha256,deployment_id:record.deployment_id,status:'succeeded',verified_url:record.verified_url,verified_at:record.verified_at,articles:record.articles,latest_batch:{...batch,published_count:count,publication_status:'succeeded',updated_at:record.verified_at}};
  const target=url.origin+'/api/deployment-status';
  const headers={'OAI-Sites-Authorization':`Bearer ${token}`,'X-Reader-Release':'1','Content-Type':'application/json'};
- const written=await fetcher(target,{method:'PUT',headers,body:JSON.stringify(receipt),redirect:'error'});if(!written.ok)throw new Error(`Publication status upload failed (${written.status})`);
- const response=await fetcher(target,{headers:{'OAI-Sites-Authorization':`Bearer ${token}`},redirect:'error'});if(!response.ok||JSON.stringify(await response.json())!==JSON.stringify(receipt))throw new Error('Publication status read-back mismatch');
+ const written=await fetcher(target,{method:'PUT',headers,body:JSON.stringify(receipt),redirect:'error',signal:AbortSignal.timeout(timeoutMs)});if(!written.ok)throw new Error(`Publication status upload failed (${written.status})`);
+ const response=await fetcher(target,{headers:{'OAI-Sites-Authorization':`Bearer ${token}`},redirect:'error',signal:AbortSignal.timeout(timeoutMs)});if(!response.ok||JSON.stringify(await response.json())!==JSON.stringify(receipt))throw new Error('Publication status read-back mismatch');
  lease.remote_status_verified=true;lease.remote_status_url=target;
  await writeFile(resolve(lock,'lease.json.tmp'),JSON.stringify(lease,null,2)+'\n');await rename(resolve(lock,'lease.json.tmp'),resolve(lock,'lease.json'));
  return {verified:true,build_id:lease.build_id};
  }finally{await rm(guard,{recursive:true,force:true});}
 }
-if(process.argv[1]===fileURLToPath(import.meta.url)){if(process.argv.length!==3)throw new Error('Usage: node scripts/sync-release-status.mjs HTTPS_SITE_ORIGIN');console.log(await syncReleaseStatus(process.argv[2]));}
+if(process.argv[1]===fileURLToPath(import.meta.url)){
+ if(process.argv.length<3||process.argv.length>4||(process.argv[3]&&process.argv[3]!=='--transport=python'))throw new Error('Usage: node scripts/sync-release-status.mjs HTTPS_SITE_ORIGIN [--transport=python]');
+ console.log(await syncReleaseStatus(process.argv[2],process.argv[3]?{fetcher:pythonStatusFetcher()}:{}));
+}

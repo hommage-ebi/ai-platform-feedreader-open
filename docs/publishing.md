@@ -137,6 +137,8 @@ node scripts/sync-release-status.mjs "$READER_SITE_URL"
 node scripts/finalize-release.mjs
 ```
 
+同期は60秒でタイムアウトする。Nodeの接続が環境のHTTPSプロキシで利用できない場合は、同じ公開IDと凍結snapshotのまま `node scripts/sync-release-status.mjs "$READER_SITE_URL" --transport=python` を試せる。Pythonの標準HTTPSプロキシ・CA設定を使用し、トークンと本文は子プロセスの標準入力を通す。必要なら `READER_PYTHON` にPython実行ファイルを指定する。いずれも書込み後の読戻しに成功するまで公開状態を確認済みにせず、別のデプロイを開始しない。
+
 結果JSONには `site_id`、`build_id`、`deployment_id`、`status` を含める。`status` は `verification_pending`、`succeeded`、`failed` のいずれか。成功時は `tests_passed: true`、`build_passed: true`、`verified_url`、`verified_at` も必須とする。実際の公開結果と接続確認を用い、記録JSONの作成だけを公開成功としない。
 
 公開全体の記録は `data/releases/` に保存する。ビルド別の最新記録に加え、デプロイID別の記録を残し、後の失敗で過去の成功を消さない。凍結snapshot内の `batch-status.json` はビルド時点の値であり、公開後には書き換えない。`sync-release-status.mjs` は同じSiteの `/api/deployment-status` へ成功確認済みreceiptを保存し、読戻した内容が一致したことを確認する。receiptは既存の非公開R2の `release-status/<build_id>.json` に保存する。Readerは `/api/batch-status` から取得し、現在のビルドID・Site・記事集合に一致するreceiptだけを反映する。静的ファイルがWorkerより先に返る配信環境でも、公開結果はこのAPIを通して取得する。receiptが未保存・読取不能なら公開件数0・`verification_pending` とし、記事の配信を継続する。新しいSQL migrationや資格情報は不要。保存経路には図保存と同じ本人限定Sites境界・`SITES_STORAGE_ENABLED` を使い、書込には専用ヘッダーを要求する。トークンは記録やコマンド引数へ含めない。同期失敗時は同じビルドの同期を再実行し、成功を装ってロックを削除しない。

@@ -26,6 +26,65 @@ class PipelineTests(unittest.TestCase):
         self.env=patch.dict(os.environ,{'PROJECT_ROOT':str(self.root)});self.env.start()
         write(self.run/'ledger.json',{'target_date':'2026-10-18','today_at_start':'2026-10-18','run_id':'test','stages':{}})
     def tearDown(self):self.env.stop();self.temp.cleanup()
+    def test_policy_cache_revalidates_changed_bytes_and_returns_fresh_bindings(self):
+        from pipeline.arxiv import policy
+        self.fixture();policy.validate_bindings(self.run)
+        with patch.object(policy,'binding_policy',wraps=policy.binding_policy) as check:
+            first=policy.validate_bindings(self.run);first.clear()
+            self.assertTrue(policy.validate_bindings(self.run));self.assertEqual(check.call_count,0)
+        path=self.run/'run/processing-policy.json';value=read(path);value['summary']+=' tampered';write(path,value)
+        with self.assertRaisesRegex(ValueError,'hash mismatch'):policy.validate_bindings(self.run)
+
+    def test_policy_cache_detects_tampered_historical_policy(self):
+        from pipeline.arxiv import policy
+        self.fixture();current=policy.run_policy(self.run);prior={**current,'summary':current['summary']+' historical'}
+        prior['sha256']=digest({k:v for k,v in prior.items() if k!='sha256'})
+        path=self.run/'run/policies'/f"{prior['sha256']}.json";write(path,prior)
+        bindings=read(self.run/'run/paper-policies.json');bindings['/'.join(identity(PAPER))]['policy_sha256']=prior['sha256'];write(self.run/'run/paper-policies.json',bindings)
+        policy.validate_bindings(self.run);policy.validate_bindings(self.run)
+        prior['summary']+=' tampered';write(path,prior)
+        with self.assertRaisesRegex(ValueError,'hash mismatch'):policy.validate_bindings(self.run)
+
+    def test_missing_html_figure_falls_back_and_explicit_recovery_preserves_history(self):
+        from pipeline.arxiv.prepare import prepare_pdf
+        html=('<article>'+('Manuscript text. '*60)+'<figure><img class="ltx_missing_image" src=""></figure></article>').encode()
+        pdf=b'%PDF-1.4\nsynthetic'
+        def fetcher(url):return (pdf,'application/pdf',url) if '/pdf/' in url else (html,'text/html',url)
+        self.assertEqual(prepare_one(self.run,PAPER,fetcher)['kind'],'pdf')
+        p=self.fixture();(p/'source.html').write_bytes(html)
+        old=read(p/'source.json');old['sha256']=digest(html);write(p/'source.json',old)
+        write(self.run/'run/selected.json',[PAPER])
+        with self.assertRaisesRegex(ValueError,'Verified model output'):prepare_pdf(self.run,PAPER,fetcher)
+        (p/'model-output-receipt.json').unlink()
+        with self.assertRaisesRegex(ValueError,'draft output'):prepare_pdf(self.run,PAPER,fetcher)
+        (p/'result.json').unlink();(p/'summary.md').unlink()
+        claims=self.root/'data/model-task-claims.json';write(claims,{'active':{'token':'fixture','run_dir':'data/runs/2026-10-18/test','target_keys':['fixture']}})
+        with self.assertRaisesRegex(ValueError,'Model task is running'):prepare_pdf(self.run,PAPER,fetcher)
+        write(claims,{})
+        recovered=prepare_pdf(self.run,PAPER,fetcher)
+        self.assertEqual(recovered['kind'],'pdf');self.assertEqual(read(p/'source-history.json'),[old])
+        self.assertEqual(read(self.run/'ledger.json')['stages']['prepare:'+ '/'.join(identity(PAPER))]['status'],'complete')
+
+    def test_prepare_pdf_never_switches_published_or_unrelated_source(self):
+        from pipeline.arxiv.prepare import prepare_pdf
+        p=self.fixture();(p/'model-output-receipt.json').unlink()
+        (p/'result.json').unlink();(p/'summary.md').unlink()
+        with self.assertRaisesRegex(ValueError,'No missing HTML'):prepare_pdf(self.run,PAPER)
+        write(self.root/'data/releases/fixture.json',{'status':'succeeded','articles':[{'article_id':PAPER['id'],'version':PAPER['version'],'content_sha256':'a'*64}]})
+        with self.assertRaisesRegex(ValueError,'Published or pending'):prepare_pdf(self.run,PAPER)
+
+    def test_markdown_autolink_is_accepted_but_raw_html_is_rejected(self):
+        p=self.fixture();path=p/'summary.md';path.write_text('## 方法\n\n<https://example.org/code>')
+        validate_output(p)
+        path.write_text('## 方法\n\n<https://example.org/code><script>alert(1)</script>')
+        with self.assertRaisesRegex(ValueError,'raw HTML'):validate_output(p)
+
+    def test_batch_does_not_count_recovered_paper_failures(self):
+        self.fixture();self.classify([PAPER]);record(self.run,'classify','blocked',{'error':'old'})
+        record(self.run,'summary','failed',{'error':'old'},'/'.join(identity(PAPER)))
+        article=assemble_one(self.run,PAPER);adapt(self.run/'site',self.run,self.root/'data/articles')
+        batch=read(self.root/'data/articles/batch-status.json')
+        self.assertEqual(batch['failed_count'],0);self.assertEqual(batch['completed_count'],1)
     def fixture(self,paper=None):
         paper=paper or PAPER
         from pipeline.arxiv.policy import run_policy,bind_papers

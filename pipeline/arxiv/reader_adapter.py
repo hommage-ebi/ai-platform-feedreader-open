@@ -183,7 +183,33 @@ def adapt_locked(site,run,dest):
                 if key in candidates and key not in valid_keys and version.get('content_sha256') in protected.get(key,set()):
                     valid.append(version);valid_keys.add(key)
         ledger=read(run/'ledger.json',{});candidates=read(run/'run/candidates.json',[]);classified=read(run/'run/classifications.json',[]);selected=read(run/'run/selected.json',[])
-        stage_failures=sum(v.get('status') in ('failed','blocked') for v in ledger.get('stages',{}).values())
+        # A successful validated article supersedes earlier failures for that
+        # paper. Keep failures.jsonl as history, but count current failures once
+        # per paper even if more than one stage failed.
+        valid_ids={'/'.join(identity(a)) for a in valid}
+        selected_ids={'/'.join(identity(a)) for a in selected}
+        candidate_ids={identity(a) for a in candidates}
+        classified_ids={identity(a) for a in classified}
+        classification_complete=False
+        if candidate_ids==classified_ids and len(classified)==len(candidate_ids):
+            try:
+                from .split_merge import classification_proof,prompt_hash,validate_classification
+                proofs=read(run/'run/classification-proofs.json',{});by_key={identity(a):a for a in classified}
+                for paper in candidates:
+                    row=by_key[identity(paper)];validate_classification([row],[paper],run)
+                    if proofs.get('/'.join(identity(paper)))!=classification_proof(paper,row,prompt_hash(run,paper),run):raise ValueError('Stale classification proof')
+                classification_complete=True
+            except (ValueError,TypeError,KeyError,OSError):pass
+        unresolved=set();candidate_names={'/'.join(p) for p in candidate_ids}
+        for name,stage in ledger.get('stages',{}).items():
+            if stage.get('status') not in ('failed','blocked'):continue
+            kind,sep,key=name.partition(':')
+            if classification_complete and kind in ('classify','classify_tasks'):continue
+            if sep and kind in ('prepare','summary','assemble','policy'):
+                if key in valid_ids or (classification_complete and key in candidate_names and (kind=='policy' or key not in selected_ids)):continue
+                unresolved.add('paper:'+key)
+            else:unresolved.add('stage:'+name)
+        stage_failures=len(unresolved)
         valid_completed=sum(1 for a in valid if a['id'] in indexed and any(v['version']==a['version'] and v.get('content_sha256')==a.get('content_sha256') for v in indexed[a['id']]['versionHistory']))
         safe_scope=[{k:v for k,v in item.items() if k in ('url','status','count','retrieved_at')} for item in ledger.get('stages',{}).get('collect',{}).get('details',{}).get('scope',[])]
         batch={'collection_scope':safe_scope,'target_date':ledger.get('target_date'),'run_id':ledger.get('run_id'),'collection_status':ledger.get('stages',{}).get('collect',{}).get('status','not_attempted'),'candidate_count':len(candidates),'selected_count':len(selected),'uncertain_count':sum(x['decision']=='uncertain' for x in classified),'completed_count':valid_completed,'added_count':len(added),'published_count':0,'publication_status':'not_deployed','failed_count':stage_failures,'unclassified_count':max(0,len(candidates)-len(classified)),'updated_at':now()}

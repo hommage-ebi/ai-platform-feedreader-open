@@ -57,7 +57,7 @@ def start(root,started_at=None,refresh_rss=False):
     return {'today':str(run),'today_collection':read(run/'ledger.json').get('stages',{}).get('collect',{'status':'not_attempted'}),'today_collection_attempt':read(run/'ledger.json').get('stages',{}).get('collect_attempt',{'status':'not_attempted'}),'backlog':historical}
 
 def cli():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('stage',choices=['start','collect','split','classify_tasks','merge','prepare','summary_tasks','assemble','claim','finish','release','cleanup','status']);parser.add_argument('--date');parser.add_argument('--started-at',help='Invocation start ISO timestamp with timezone, frozen before bootstrap');parser.add_argument('--timezone',default='Asia/Tokyo');parser.add_argument('--run-dir',default='.');parser.add_argument('--project-root');parser.add_argument('--task-file');parser.add_argument('--task-index',type=int,default=0);parser.add_argument('--owner');parser.add_argument('--token');parser.add_argument('--refresh-rss',action='store_true',help='Refetch RSS with a new cache-busting URL instead of reusing saved feeds (start/collect only)');args=parser.parse_args();run=Path(args.run_dir).resolve()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('stage',choices=['start','collect','split','classify_tasks','merge','prepare','prepare_pdf','summary_tasks','assemble','claim','finish','release','cleanup','status']);parser.add_argument('--date');parser.add_argument('--started-at',help='Invocation start ISO timestamp with timezone, frozen before bootstrap');parser.add_argument('--timezone',default='Asia/Tokyo');parser.add_argument('--run-dir',default='.');parser.add_argument('--project-root');parser.add_argument('--task-file');parser.add_argument('--task-index',type=int,default=0);parser.add_argument('--owner');parser.add_argument('--token');parser.add_argument('--paper-id');parser.add_argument('--paper-version');parser.add_argument('--refresh-rss',action='store_true',help='Refetch RSS with a new cache-busting URL instead of reusing saved feeds (start/collect only)');args=parser.parse_args();run=Path(args.run_dir).resolve()
     if args.refresh_rss and args.stage not in ('start','collect'):parser.error('--refresh-rss is only supported for start and collect')
     if args.project_root:os.environ['PROJECT_ROOT']=str(Path(args.project_root).resolve())
     if args.timezone!='Asia/Tokyo':parser.error('Only Asia/Tokyo is supported')
@@ -90,6 +90,11 @@ def cli():
         elif args.stage=='prepare':
             from .prepare import prepare
             result=prepare(run)
+        elif args.stage=='prepare_pdf':
+            from .prepare import prepare_pdf
+            matches=[p for p in read(run/'run/selected.json',[]) if p.get('id')==args.paper_id and p.get('version')==args.paper_version]
+            if len(matches)!=1:raise ValueError('Specify one selected paper with --paper-id and --paper-version')
+            result=prepare_pdf(run,matches[0])
         elif args.stage=='assemble':
             from .assemble import assemble
             result=assemble(run)

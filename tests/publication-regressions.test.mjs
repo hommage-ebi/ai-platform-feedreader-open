@@ -11,6 +11,9 @@ test('empty-run deployment records, publishes actual runtime status, retries and
  const objects=new Map(),env={TRUSTED_AUTH_HEADER:'hosting',SITES_OWNER_PRIVATE:'confirmed',SITES_STORAGE_ENABLED:'true',OWNER_USER_ID:'owner',ASSETS:{fetch:async request=>{const path=new URL(request.url).pathname;return new Response(await readFile(join(lease.snapshot,'client',path)));}},IMAGES:{get:async key=>objects.has(key)?{text:async()=>objects.get(key)}:null,put:async(key,value)=>objects.set(key,value)}};
  const request=new Request('https://reader.example/batch-status.json');assert.equal((await (await publishedBatch(request,env)).json()).publication_status,'verification_pending');
  const fetcher=async(url,options)=>deploymentStatusRequest(new Request(url,options),env);
+ const stalled=async(_url,{signal})=>new Promise((resolve,reject)=>{const watchdog=setTimeout(()=>reject(new Error('abort signal missing')),1000);signal.addEventListener('abort',()=>{clearTimeout(watchdog);reject(new Error('timed out'));},{once:true});});
+ await assert.rejects(syncReleaseStatus('https://reader.example',{fetcher:stalled,token:'test-token',timeoutMs:5}),/timed out/);
+ await assert.rejects(finalizeRelease(),/not been synchronized/);
  await syncReleaseStatus('https://reader.example',{fetcher,token:'test-token'});await syncReleaseStatus('https://reader.example',{fetcher,token:'test-token'});
  assert.equal((await (await publishedBatch(request,env)).json()).publication_status,'succeeded');assert.deepEqual(JSON.parse(await readFile(join(lease.snapshot,'client/batch-status.json'),'utf8')),{});
  const denied=await deploymentStatusRequest(new Request('https://reader.example/api/deployment-status',{headers:{'oai-authenticated-user-id':'other'}}),env);assert.equal(denied.status,403);
